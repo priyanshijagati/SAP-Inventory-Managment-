@@ -1,0 +1,515 @@
+*&---------------------------------------------------------------------*
+*&  Include           ZPARR_PROJECT_O01
+*&---------------------------------------------------------------------*
+*&---------------------------------------------------------------------*
+*&      Module  STATUS_0004  OUTPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE status_0004 OUTPUT.
+  SET PF-STATUS 'ADMIN_SCREEN'.
+  SET TITLEBAR 'ADMIN_TIT'.
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Module  STATUS_0001  OUTPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE status_0001 OUTPUT.
+  SET PF-STATUS '0001'.
+  SET TITLEBAR 'LOG IN SCREEN'.
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Module  STATUS_0003  OUTPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE status_0003 OUTPUT.
+  SET PF-STATUS '00003'.
+  TRANSLATE lv_custname TO UPPER CASE.
+  SET TITLEBAR 'CUST_SCR' WITH lv_custname.
+ENDMODULE.
+
+*&---------------------------------------------------------------------*
+*&      Module  STATUS_0002  OUTPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE status_0002 OUTPUT.
+  SET PF-STATUS '0002'.
+  SET TITLEBAR 'REGISTRATION'.
+ENDMODULE.
+
+*&---------------------------------------------------------------------*
+*&      Module  FLAG  OUTPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE flag OUTPUT.
+
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Module  DISPLAY_ORDERS  OUTPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE display_orders OUTPUT.
+PERFORM cust_Alv.
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Module  STATUS_0005  OUTPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE status_0005 OUTPUT.
+  SET PF-STATUS '005'.
+*  SET TITLEBAR 'xxx'.
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Module  ADMIN  OUTPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE admin OUTPUT.
+  CREATE OBJECT container1
+    EXPORTING
+      container_name = 'CC_ADMIN_ORDERS'.
+
+  CREATE OBJECT grid
+    EXPORTING
+      i_parent = container1.
+
+  CALL FUNCTION 'LVC_FIELDCATALOG_MERGE'
+    EXPORTING
+*     I_BUFFER_ACTIVE  =
+      i_structure_name = 'ZSTPARR_ORDERS'
+*     I_CLIENT_NEVER_DISPLAY       = 'X'
+*     I_BYPASSING_BUFFER           =
+*     I_INTERNAL_TABNAME           =
+    CHANGING
+      ct_fieldcat      = gt_fcat
+*   EXCEPTIONS
+*     INCONSISTENT_INTERFACE       = 1
+*     PROGRAM_ERROR    = 2
+*     OTHERS           = 3
+    .
+  IF sy-subrc <> 0.
+* Implement suitable error handling here
+  ENDIF.
+*    SELECT * FROM zparr_order INTO CORRESPONDING FIELDS OF TABLE lt_order
+*      WHERE status = 'Open'.
+*      CALL METHOD go_tree->set_table_for_first_display
+**      EXPORTING
+**        i_structure_name     =
+**        is_variant           =
+**        i_save               =
+**        i_default            = 'X'
+**        is_hierarchy_header  =
+**        is_exception_field   =
+**        it_special_groups    =
+**        it_list_commentary   =
+**        i_logo               =
+**        i_background_id      =
+**        it_toolbar_excluding =
+**        it_except_qinfo      =
+*      CHANGING
+*        it_outtab       = lt_order
+**       it_filter       =
+*        it_fieldcatalog = lt_fieldcat.
+
+*      LOOP AT gt_data ASSIGNING FIELD-SYMBOL(<fs_data>).
+*    SELECT SINGLE m_name INTO <fs_data>-m_name FROM zparr_material WHERE mid = <fs_data>-mid.
+*  ENDLOOP.
+
+
+
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Module  FETCH  OUTPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE fetch OUTPUT.
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Module  GEN  OUTPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE gen OUTPUT.
+  IF rflag = 0.
+    PERFORM reg_auto.
+  ENDIF.
+ENDMODULE.
+
+*&SPWIZARD: OUTPUT MODULE FOR TS 'TS_ADMIN'. DO NOT CHANGE THIS LINE!
+*&SPWIZARD: SETS ACTIVE TAB
+*&---------------------------------------------------------------------*
+*&      Module  STATUS_0110  OUTPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE status_0110 OUTPUT.
+  SET PF-STATUS '006'.
+*  SET TITLEBAR 'xxx'.
+ENDMODULE.
+
+*&SPWIZARD: OUTPUT MODULE FOR TS 'TC_ADMIN'. DO NOT CHANGE THIS LINE!
+*&SPWIZARD: SETS ACTIVE TAB
+MODULE tc_admin_active_tab_set OUTPUT.
+  tc_admin-activetab = g_tc_admin-pressed_tab.
+  CASE g_tc_admin-pressed_tab.
+    WHEN c_tc_admin-tab1.
+      g_tc_admin-subscreen = '0009'.
+    WHEN c_tc_admin-tab2.
+      g_tc_admin-subscreen = '0010'.
+    WHEN c_tc_admin-tab3.
+      g_tc_admin-subscreen = '0011'.
+    WHEN OTHERS.
+*&SPWIZARD:      DO NOTHING
+  ENDCASE.
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Module  SHOW_DATA_HL  OUTPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*MODULE show_data_hl OUTPUT.
+**  LEAVE TO SCREEN '0009'.
+**  DATA: gt_hdata TYPE TABLE OF zstparr_hdata.
+**  DATA: gt_rdata TYPE TABLE OF zstparr_rdata.
+*
+*  DATA: gt_fcat1 TYPE slis_t_fieldcat_alv,
+*        gs_fcat1 TYPE slis_fieldcat_alv.
+*
+*  DATA: ls_keyinfo TYPE slis_keyinfo_alv.
+*
+*  SELECT a~order_id b~cust_id b~cust_name a~status a~order_date  FROM zparr_order AS a INNER JOIN zparr_cust AS b ON a~cust_id = b~cust_id INTO CORRESPONDING FIELDS OF TABLE gt_hdata WHERE a~status = 'OPEN' AND a~cust_id = b~cust_id.
+*
+*  SELECT a~order_id b~mid b~m_name a~quotation a~currency a~unit a~stock FROM zparr_order AS a INNER JOIN zparr_material AS b ON a~mid = b~mid INTO CORRESPONDING FIELDS OF TABLE gt_rdata WHERE a~status = 'OPEN' AND a~mid = b~mid.
+*
+*
+*  gs_fcat1-col_pos = '1'.
+*  gs_fcat1-fieldname = 'ORDER_ID'.
+*  gs_fcat1-tabname = 'GT_HDATA'.
+*  gs_fcat1-seltext_l = 'Order ID'.
+*  APPEND gs_fcat1 TO gt_fcat1.
+*  CLEAR gs_fcat1.
+*
+*  gs_fcat1-col_pos = '2'.
+*  gs_fcat1-fieldname = 'CUST_ID'.
+*  gs_fcat1-tabname = 'GT_HDATA'.
+*  gs_fcat1-seltext_l = 'CUSTOMER ID'.
+*  APPEND gs_fcat1 TO gt_fcat1.
+*  CLEAR gs_fcat1.
+*
+*  gs_fcat1-col_pos = '3'.
+*  gs_fcat1-fieldname = 'CUST_NAME'.
+*  gs_fcat1-tabname = 'GT_HDATA'.
+*  gs_fcat1-seltext_l = 'CUSTOMER NAME'.
+*  APPEND gs_fcat1 TO gt_fcat1.
+*  CLEAR gs_fcat1.
+*
+*  gs_fcat1-col_pos = '5'.
+*  gs_fcat1-fieldname = 'STATUS'.
+*  gs_fcat1-tabname = 'GT_HDATA'.
+*  gs_fcat1-seltext_l = 'STATUS'.
+*  APPEND gs_fcat1 TO gt_fcat1.
+*  CLEAR gs_fcat1.
+*
+*  gs_fcat1-col_pos = '4'.
+*  gs_fcat1-fieldname = 'ORDER_DATE'.
+*  gs_fcat1-tabname = 'GT_HDATA'.
+*  gs_fcat1-seltext_l = 'ORDER DATE'.
+*  APPEND gs_fcat1 TO gt_fcat1.
+*  CLEAR gs_fcat1.
+*
+*
+*  gs_fcat1-col_pos = '1'.
+*  gs_fcat1-fieldname = 'ORDER_ID'.
+*  gs_fcat1-tabname = 'GT_RDATA'.
+*  gs_fcat1-seltext_l = 'ORDER ID'.
+*  APPEND gs_fcat1 TO gt_fcat1.
+*  CLEAR gs_fcat1.
+*
+*  gs_fcat1-col_pos = '2'.
+*  gs_fcat1-fieldname = 'MID'.
+*  gs_fcat1-tabname = 'GT_RDATA'.
+*  gs_fcat1-seltext_l = 'MATERIAL ID'.
+*  APPEND gs_fcat1 TO gt_fcat1.
+*  CLEAR gs_fcat1.
+*
+*  gs_fcat1-col_pos = '3'.
+*  gs_fcat1-fieldname = 'M_NAME'.
+*  gs_fcat1-tabname = 'GT_RDATA'.
+*  gs_fcat1-seltext_l = 'MATERIAL NAME'.
+*  APPEND gs_fcat1 TO gt_fcat1.
+*  CLEAR gs_fcat1.
+*
+*  gs_fcat1-col_pos = '4'.
+*  gs_fcat1-fieldname = 'STOCK'.
+*  gs_fcat1-tabname = 'GT_RDATA'.
+*  gs_fcat1-seltext_l = 'QUANTITY'.
+*  APPEND gs_fcat1 TO gt_fcat1.
+*  CLEAR gs_fcat1.
+*
+*  gs_fcat1-col_pos = '5'.
+*  gs_fcat1-fieldname = 'UNIT'.
+*  gs_fcat1-tabname = 'GT_RDATA'.
+*  gs_fcat1-seltext_l = 'UNITS'.
+*  APPEND gs_fcat1 TO gt_fcat1.
+*  CLEAR gs_fcat1.
+*
+*  gs_fcat1-col_pos = '6'.
+*  gs_fcat1-fieldname = 'QUOTATION'.
+*  gs_fcat1-tabname = 'GT_RDATA'.
+*  gs_fcat1-seltext_l = 'QUOTATION'.
+*  APPEND gs_fcat1 TO gt_fcat1.
+*  CLEAR gs_fcat1.
+*
+*  gs_fcat1-col_pos = '7'.
+*  gs_fcat1-fieldname = 'CURRENCY'.
+*  gs_fcat1-tabname = 'GT_RDATA'.
+*  gs_fcat1-seltext_l = 'CURRENCY'.
+*  APPEND gs_fcat1 TO gt_fcat1.
+*  CLEAR gs_fcat1.
+*
+*
+*  ls_keyinfo-header01 = 'ORDER_ID'.
+*  ls_keyinfo-item01 = 'ORDER_ID'.
+*
+*  CALL FUNCTION 'REUSE_ALV_HIERSEQ_LIST_DISPLAY'
+*    EXPORTING
+**     I_INTERFACE_CHECK  = ' '
+*      i_callback_program = sy-repid
+**     I_CALLBACK_PF_STATUS_SET       = ' '
+**     I_CALLBACK_USER_COMMAND        = ' '
+**     IS_LAYOUT          =
+*      it_fieldcat        = gt_fcat1
+**     IT_EXCLUDING       =
+**     IT_SPECIAL_GROUPS  =
+**     IT_SORT            =
+**     IT_FILTER          =
+**     IS_SEL_HIDE        =
+**     I_SCREEN_START_COLUMN          = 0
+**     I_SCREEN_START_LINE            = 0
+**     I_SCREEN_END_COLUMN            = 0
+**     I_SCREEN_END_LINE  = 0
+**     I_DEFAULT          = 'X'
+**     I_SAVE             = ' '
+**     IS_VARIANT         =
+**     IT_EVENTS          =
+**     IT_EVENT_EXIT      =
+*      i_tabname_header   = 'GT_HDATA'
+*      i_tabname_item     = 'GT_RDATA'
+**     I_STRUCTURE_NAME_HEADER        =
+**     I_STRUCTURE_NAME_ITEM          =
+*      is_keyinfo         = ls_keyinfo
+**     IS_PRINT           =
+**     IS_REPREP_ID       =
+**     I_BYPASSING_BUFFER =
+**     I_BUFFER_ACTIVE    =
+**     IR_SALV_HIERSEQ_ADAPTER        =
+**     IT_EXCEPT_QINFO    =
+**     I_SUPPRESS_EMPTY_DATA          = ABAP_FALSE
+**     IMPORTING
+**     E_EXIT_CAUSED_BY_CALLER        =
+**     ES_EXIT_CAUSED_BY_USER         =
+*    TABLES
+*      t_outtab_header    = gt_hdata
+*      t_outtab_item      = gt_rdata
+**     EXCEPTIONS
+**     PROGRAM_ERROR      = 1
+**     OTHERS             = 2
+*    .
+*  IF sy-subrc <> 0.
+** Implement suitable error handling here
+*  ENDIF.
+*ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Module  SHOW_DATA_HL2  OUTPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE show_data_hl2 OUTPUT.
+
+  SELECT a~order_id b~cust_id b~cust_name a~status a~order_date  FROM zparr_order AS a INNER JOIN zparr_cust AS b ON a~cust_id = b~cust_id INTO CORRESPONDING FIELDS OF TABLE gt_orders WHERE a~status in ('OPEN','ACCEPT') AND a~cust_id = b~cust_id.
+
+  SELECT a~order_id b~mid b~m_name a~quotation a~currency a~unit a~stock FROM zparr_order AS a INNER JOIN zparr_material AS b ON a~mid = b~mid INTO CORRESPONDING FIELDS OF TABLE gt_order_items WHERE a~status IN ('OPEN','ACCEPT') AND a~mid = b~mid.
+
+  IF g_grid IS INITIAL.
+    PERFORM field_catlog.
+    PERFORM build_display_table. " assumes gt_orders and gt_order_items are available
+    CREATE OBJECT g_container
+      EXPORTING
+        container_name = 'CC_OPEN'.
+    CREATE OBJECT g_grid
+      EXPORTING
+        i_parent = g_container.
+
+    gs_layout-zebra = abap_true.
+    gs_layout-info_fname = 'COLOR'.
+*    gs_layout-box_fname  = 'SEL'.
+    gs_layout-box_fname = 'SEL'.
+
+
+    CALL METHOD g_grid->set_table_for_first_display
+      EXPORTING
+        is_layout       = gs_layout
+      CHANGING
+        it_outtab       = gt_display
+        it_fieldcatalog = gt_fcat.
+  ENDIF.
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Module  STATUS_0401  OUTPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE status_0401 OUTPUT.
+  SET PF-STATUS '401R'.
+  SET TITLEBAR 'QSC'.
+*  oiads = ladodo.
+*  oiads = ladodc.
+
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Module  STATUS_0101  OUTPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE status_0101 OUTPUT.
+  SET PF-STATUS '0101'.
+  SET TITLEBAR 'FGTITLE'.
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Module  MY_SHOW_DATA  OUTPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*MODULE my_show_data OUTPUT.
+*  SELECT a~order_id b~cust_id b~cust_name a~status a~order_date  FROM zparr_order AS a INNER JOIN zparr_cust AS b ON a~cust_id = b~cust_id INTO CORRESPONDING FIELDS OF TABLE gt_hdata WHERE a~status = 'OPEN' AND a~cust_id = b~cust_id.
+
+*  SELECT a~order_id b~mid b~m_name a~quotation a~currency a~unit a~stock FROM zparr_order AS a INNER JOIN zparr_material AS b ON a~mid = b~mid INTO CORRESPONDING FIELDS OF TABLE gt_rdata WHERE a~status = 'OPEN' AND a~mid = b~mid.
+*ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Module  SHOW_ORDER_CANCELLED  OUTPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE show_order_cancelled OUTPUT.
+  SELECT a~order_id b~cust_id b~cust_name a~status a~order_date  FROM zparr_order AS a INNER JOIN zparr_cust AS b ON a~cust_id = b~cust_id INTO CORRESPONDING FIELDS OF TABLE gt_orders WHERE ( a~status = 'CANCEL' or a~status = 'CANCELLED') AND a~cust_id
+= b~cust_id.
+
+  SELECT a~order_id b~mid b~m_name a~quotation a~currency a~unit a~stock FROM zparr_order AS a INNER JOIN zparr_material AS b ON a~mid = b~mid INTO CORRESPONDING FIELDS OF TABLE gt_order_items WHERE ( a~status = 'CANCEL' or a~status = 'CANCELLED') AND
+a~mid = b~mid.
+
+  IF g_grid1 IS INITIAL.
+    PERFORM field_catlog.
+    PERFORM build_display_table1. " assumes gt_orders and gt_order_items are available
+    CREATE OBJECT g_container1
+      EXPORTING
+        container_name = 'CC_OPEN1'.
+    CREATE OBJECT g_grid1
+      EXPORTING
+        i_parent = g_container1.
+
+    gs_layout-zebra = abap_true.
+    gs_layout-info_fname = 'COLOR'.
+*    gs_layout-box_fname  = 'SEL'.
+    gs_layout-box_fname = 'SEL'.
+
+
+    CALL METHOD g_grid1->set_table_for_first_display
+      EXPORTING
+        is_layout       = gs_layout
+      CHANGING
+        it_outtab       = gt_display1
+        it_fieldcatalog = gt_fcat.
+  ENDIF.
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Module  SHOW_ORDER_COMPLETED  OUTPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE show_order_completed OUTPUT.
+  SELECT a~order_id b~cust_id b~cust_name a~status a~order_date  FROM zparr_order AS a INNER JOIN zparr_cust AS b ON a~cust_id = b~cust_id INTO CORRESPONDING FIELDS OF TABLE gt_orders WHERE ( a~status = 'COMPLETED' or a~status = 'COMPLETE' )
+    AND a~cust_id = b~cust_id.
+
+  SELECT a~order_id b~mid b~m_name a~quotation a~currency a~unit a~stock FROM zparr_order AS a INNER JOIN zparr_material AS b ON a~mid = b~mid INTO CORRESPONDING FIELDS OF TABLE gt_order_items WHERE ( a~status = 'COMPLETED' or a~status = 'COMPLETE' )
+    AND a~mid = b~mid.
+
+  IF g_grid2 IS INITIAL.
+    PERFORM field_catlog.
+    PERFORM build_display_table2. " assumes gt_orders and gt_order_items are available
+    CREATE OBJECT g_container2
+      EXPORTING
+        container_name = 'CC_OPEN2'.
+    CREATE OBJECT g_grid2
+      EXPORTING
+        i_parent = g_container2.
+
+    gs_layout-zebra = abap_true.
+    gs_layout-info_fname = 'COLOR'.
+*    gs_layout-box_fname  = 'SEL'.
+    gs_layout-box_fname = 'SEL'.
+
+
+    CALL METHOD g_grid2->set_table_for_first_display
+      EXPORTING
+        is_layout       = gs_layout
+      CHANGING
+        it_outtab       = gt_display2
+        it_fieldcatalog = gt_fcat.
+  ENDIF.
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Module  SHOW_DATA_17  OUTPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*MODULE show_data_17 OUTPUT.
+*  DATA: gt_hdata TYPE TABLE OF zstparr_hdata.
+*  DATA: gt_rdata TYPE TABLE OF zstparr_rdata.
+*SELECT a~order_id b~cust_id b~cust_name a~status a~order_date  FROM zparr_order AS a INNER JOIN zparr_cust AS b ON a~cust_id = b~cust_id INTO CORRESPONDING FIELDS OF TABLE gt_hdata WHERE a~status = 'OPEN' AND a~cust_id = b~cust_id.
+*
+*  SELECT a~order_id b~mid b~m_name a~quotation a~currency a~unit a~stock FROM zparr_order AS a INNER JOIN zparr_material AS b ON a~mid = b~mid INTO CORRESPONDING FIELDS OF TABLE gt_rdata WHERE a~status = 'OPEN' AND a~mid = b~mid.
+*
+*
+*  IF gr_container IS INITIAL.
+*
+*    CREATE OBJECT gr_container
+*      EXPORTING
+*        container_name = 'CC_OPEN'. " Name of your custom control
+*
+*     Create the SALV hierarchical table
+*    TRY.
+*        cl_salv_hierseq_table=>factory(
+*          EXPORTING
+*            r_container      = gr_container
+*            r_CONTROLLER      = gr_container
+*          IMPORTING
+*            r_hierseq_table  = gr_alv
+*          CHANGING
+*            t_table_parent   = gt_hDATA
+*            t_table_child    = gt_RDATA
+*        ).
+*
+*        gr_alv->set_hierarchy(
+*          EXPORTING
+*            hierarchy_header = 'Order'
+*            hierarchy_id     = 'ORDER_ID' " common field
+*            parent_key       = 'ORDER_ID'
+*            child_key        = 'ORDER_ID'
+*        ).
+*
+*        gr_alv->display( ).
+*
+*      CATCH cx_salv_msg INTO DATA(lx_msg).
+*        MESSAGE lx_msg->get_text( ) TYPE 'E'.
+*    ENDTRY.
+*
+*  ENDIF.
+
+*ENDMODULE.

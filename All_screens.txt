@@ -1,0 +1,159 @@
+                           screen 0001
+						   
+
+PROCESS BEFORE OUTPUT.
+*  MODULE fetch.
+  MODULE status_0001.
+*
+PROCESS AFTER INPUT.
+  CHAIN.
+    FIELD: user,pass MODULE user_command_0001.
+  ENDCHAIN.
+  MODULE user_command_0001.
+  MODULE exit AT EXIT-COMMAND.
+  
+                            screen 0002
+							
+PROCESS BEFORE OUTPUT.
+  MODULE gen.
+  MODULE status_0002.
+
+PROCESS AFTER INPUT.
+
+  CHAIN.
+    FIELD : ls_cust1-password , ls_cust1-re_pass MODULE validate_pass.
+  ENDCHAIN.
+
+  MODULE user_command_0002.
+  MODULE exit AT EXIT-COMMAND.
+  
+  
+                           screen 0003
+						   
+PROCESS BEFORE OUTPUT.
+  MODULE status_0003.
+  MODULE display_orders.
+
+*
+PROCESS AFTER INPUT.
+  MODULE user_command_0003.
+  MODULE exit_command3 AT EXIT-COMMAND.
+  
+  
+                            screen 0004
+
+
+PROCESS BEFORE OUTPUT.
+*&SPWIZARD: PBO FLOW LOGIC FOR TABSTRIP 'TC_ADMIN'
+  MODULE TC_ADMIN_ACTIVE_TAB_SET.
+  CALL SUBSCREEN:
+       0009_SCA INCLUDING G_TC_ADMIN-PROG '0009',
+       0010_SCA INCLUDING G_TC_ADMIN-PROG '0010',
+       0011_SCA INCLUDING G_TC_ADMIN-PROG '0011'.
+*&SPWIZARD: PBO FLOW LOGIC FOR TABSTRIP 'TS_ADMIN'
+*  MODULE TS_ADMIN_ACTIVE_TAB_SET.
+*  CALL SUBSCREEN TS_ADMIN_SCA
+*    INCLUDING G_TS_ADMIN-PROG G_TS_ADMIN-SUBSCREEN.
+ MODULE STATUS_0004.
+ Module Admin.
+
+*
+PROCESS AFTER INPUT.
+*&SPWIZARD: PAI FLOW LOGIC FOR TABSTRIP 'TC_ADMIN'
+  CALL SUBSCREEN:
+       0009_SCA,
+       0010_SCA,
+       0011_SCA.
+  MODULE TC_ADMIN_ACTIVE_TAB_GET.
+*&SPWIZARD: PAI FLOW LOGIC FOR TABSTRIP 'TS_ADMIN'
+*  CALL SUBSCREEN TS_ADMIN_SCA.
+*  MODULE TS_ADMIN_ACTIVE_TAB_GET.
+* MODULE USER_COMMAND_0004.
+  MODULE exit4 AT EXIT-COMMAND.
+  
+  
+                       screen 0005
+					   
+PROCESS BEFORE OUTPUT.
+ MODULE STATUS_0005.
+*
+PROCESS AFTER INPUT.
+
+CHAIN.
+
+    FIELD : LS_CUST1-PASSWORD , LS_CUST1-RE_PASS MODULE VALIDATE_PASS.
+
+ENDCHAIN.
+
+ MODULE USER_COMMAND_0005.
+ 
+ 
+                       screen 0009
+					   
+PROCESS BEFORE OUTPUT.
+* MODULE STATUS_0110.
+*module show_data_hl.
+*module show_data_l2.
+MODULE show_data_hl2.
+*  module show_data_17.
+*module my_show_data.
+*
+PROCESS AFTER INPUT.
+ MODULE USER_COMMAND_0110.
+ 
+                     
+					  
+					  
+					   screen 0010
+					  
+PROCESS BEFORE OUTPUT.
+* MODULE STATUS_0110.
+module show_order_cancelled.
+
+*
+PROCESS AFTER INPUT.
+ MODULE USER_COMMAND_010.
+ 
+                       screen 0011
+					   
+PROCESS BEFORE OUTPUT.
+* MODULE STATUS_0110.
+MODULE SHOW_ORDER_COMPLETED.
+*
+PROCESS AFTER INPUT.
+ MODULE USER_COMMAND_011.
+ 
+                        
+					       screen 0101
+					
+PROCESS BEFORE OUTPUT.
+ MODULE STATUS_0101.
+*
+PROCESS AFTER INPUT.
+CHAIN.
+    FIELD : LS_CUST1-PASSWORD , LS_CUST1-RE_PASS MODULE VALIDATE_PASS.
+ENDCHAIN.
+ MODULE USER_COMMAND_0101.
+   MODULE EXIT101 AT EXIT-COMMAND.
+   
+   
+                        screen 401
+						
+ PROCESS BEFORE OUTPUT.
+ MODULE STATUS_0401.
+*
+PROCESS AFTER INPUT.
+ MODULE USER_COMMAND_0401.
+   MODULE EXIT_DB401 AT EXIT-COMMAND.  
+   
+   
+                       screen 600
+					   
+
+PROCESS BEFORE OUTPUT.
+ MODULE STATUS_0600.
+*
+PROCESS AFTER INPUT.
+ MODULE USER_COMMAND_0600.
+   
+                   

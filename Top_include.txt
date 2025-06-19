@@ -1,0 +1,220 @@
+*&---------------------------------------------------------------------*
+*& Module Pool       ZPARR_PROJECT
+*&---------------------------------------------------------------------*
+* Main program for customer order processing in smartSale Ltd.
+* This includes customer management, order processing, ALV displays,
+* and tabstrip navigation handling.
+*&---------------------------------------------------------------------*
+
+*INCLUDE ZPARR_PROJECT_TOP     - Global Data Declarations
+*INCLUDE ZPARR_PROJECT_O01     - PBO Modules (Process Before Output)
+*INCLUDE ZPARR_PROJECT_I01     - PAI Modules (Process After Input)
+*INCLUDE ZPARR_PROJECT_F01     - FORM Routines
+
+*&---------------------------------------------------------------------*
+*& Include ZPARR_PROJECT_TOP - Global declarations and structures
+*&---------------------------------------------------------------------*
+PROGRAM zparr_project.
+
+* Temporary text variables
+DATA: reg_txt TYPE char10.
+DATA: fg_txt TYPE char10.
+
+* ALV layout variant and layout config
+DATA: gs_variant TYPE disvariant.
+DATA: gs_layoutc TYPE lvc_s_layo.
+
+* Row index containers for ALV
+DATA: index_rows  TYPE lvc_t_row.
+DATA: index_rows1 TYPE lvc_t_row.
+DATA: index_rows2 TYPE lvc_t_row.
+DATA: index_rows3 TYPE lvc_t_row.
+
+* Order data (custom structure/table)
+DATA: gt_data TYPE TABLE OF zstparr_orders,
+      gs_data TYPE zstparr_orders.
+
+* ALV sorting and field catalog
+DATA: gt_sort TYPE lvc_t_sort,
+      gs_sort TYPE lvc_s_sort.
+DATA: gt_fcat TYPE lvc_t_fcat,
+      gs_fcat TYPE lvc_s_fcat.
+
+* Customer master data
+DATA: gt_cdata TYPE TABLE OF zparr_cust,
+      gs_cdata TYPE zparr_cust.
+
+* ALV container and grid objects
+DATA: container1 TYPE REF TO cl_gui_custom_container,
+      grid       TYPE REF TO cl_gui_alv_grid.
+
+* For login/authorization
+DATA: ok_code TYPE sy-ucomm.   "User command"
+DATA: user    TYPE char30.     "Entered username"
+DATA: pass    TYPE char30.     "Entered password"
+
+* Local tables for customer handling
+DATA: lt_cust TYPE TABLE OF zparr_cust,
+      ls_cust TYPE zparr_cust.
+
+DATA: lv_flag TYPE i.   "General purpose flag"
+
+* Custom structure for customer registration with password confirmation
+TYPES: BEGIN OF ty_cust,
+         cust_name TYPE zparr_cust-cust_name,
+         password  TYPE zparr_cust-password,
+         re_pass   TYPE c LENGTH 20,  "Re-entered password"
+         seq_que   TYPE zparr_cust-secu_que,
+         answer    TYPE zparr_cust-answer,
+       END OF ty_cust.
+
+DATA: ls_cust1 TYPE ty_cust.  "Customer registration screen structure"
+DATA: custom1.                "Dummy variable (unused)"
+
+* Local structure for displaying order data
+TYPES: BEGIN OF lty_order,
+         order_id   TYPE zparr_order-order_id,
+         mid        TYPE zparr_order-mid,
+         cust_id    TYPE zparr_order-cust_id,
+         order_date TYPE zparr_order-order_date,
+         status     TYPE zparr_order-status,
+         quotation  TYPE zparr_order-quotation,
+         created_by TYPE zparr_order-created_by,
+         created_on TYPE zparr_order-created_on,
+       END OF lty_order.
+
+DATA: lt_order TYPE TABLE OF zparr_order,
+      ls_order LIKE LINE OF lt_order.
+
+DATA: lt_fieldcat TYPE lvc_t_fcat.  "ALV field catalog"
+
+* Variables for customer ID generation
+DATA: ccid    TYPE zde_custid,
+      lv_post TYPE n LENGTH 3,
+      lv_pre  TYPE zde_custid,
+      lv_no   TYPE n LENGTH 3.
+
+* Customer details
+DATA: lv_custname TYPE name1,
+      lv_custid   TYPE zde_custid.
+
+DATA: rflag TYPE i. "General-purpose flag"
+DATA: lv_screen(4) TYPE n VALUE '0009'.  "Initial screen number"
+
+* Hardcoded admin credentials
+DATA: auser TYPE char20 VALUE 'MYADMIN'.
+DATA: apass TYPE char20 VALUE 'ADMIN@123'.
+
+* Constants and controls for tabstrip 'TS_ADMIN'
+CONSTANTS: BEGIN OF c_ts_admin,
+             tab1 LIKE sy-ucomm VALUE 'TS_ADMIN_FC1',
+             tab2 LIKE sy-ucomm VALUE 'TS_ADMIN_FC2',
+             tab3 LIKE sy-ucomm VALUE 'TS_ADMIN_FC3',
+           END OF c_ts_admin.
+
+CONTROLS:  ts_admin TYPE TABSTRIP.
+DATA: BEGIN OF g_ts_admin,
+        subscreen   LIKE sy-dynnr,
+        prog        LIKE sy-repid VALUE 'ZPARR_PROJECT',
+        pressed_tab LIKE sy-ucomm VALUE c_ts_admin-tab1,
+      END OF g_ts_admin.
+
+* Constants and controls for tabstrip 'TC_ADMIN'
+CONSTANTS: BEGIN OF c_tc_admin,
+             tab1 LIKE sy-ucomm VALUE 'TC_ADMIN_FC1',
+             tab2 LIKE sy-ucomm VALUE 'TC_ADMIN_FC2',
+             tab3 LIKE sy-ucomm VALUE 'TC_ADMIN_FC3',
+           END OF c_tc_admin.
+
+CONTROLS:  tc_admin TYPE TABSTRIP.
+DATA: BEGIN OF g_tc_admin,
+        subscreen   LIKE sy-dynnr,
+        prog        LIKE sy-repid VALUE 'ZPARR_PROJECT',
+        pressed_tab LIKE sy-ucomm VALUE c_tc_admin-tab1,
+      END OF g_tc_admin.
+
+* ALV containers and tree
+DATA: g_container  TYPE REF TO cl_gui_custom_container,
+      g_container1 TYPE REF TO cl_gui_custom_container,
+      g_container2 TYPE REF TO cl_gui_custom_container,
+      g_tree       TYPE REF TO cl_gui_alv_tree.
+
+* Combined order-item display structure (for hierarchical ALV)
+TYPES: BEGIN OF ty_display,
+         rowtype    TYPE char5,                    "Row type indicator (ORDER/ITEM)"
+         sel        TYPE char1,                    "Selection checkbox"
+         order_id   TYPE c LENGTH 10,
+         cust_id    TYPE zde_custid,
+         cust_name  TYPE name1,
+         order_date TYPE dats,
+         status     TYPE zde_stat,
+         mid        TYPE zde_mid,
+         m_name     TYPE name1,
+         stock      TYPE zstparr_rdata-stock,
+         unit       TYPE zstparr_rdata-unit,
+         quotation  TYPE zstparr_rdata-quotation,
+         currency   TYPE zstparr_rdata-currency,
+       END OF ty_display.
+
+* Hierarchical ALV internal tables and objects
+DATA: gt_display        TYPE STANDARD TABLE OF ty_display,
+      gt_display1       TYPE STANDARD TABLE OF ty_display,
+      gt_display2       TYPE STANDARD TABLE OF ty_display,
+      g_grid            TYPE REF TO cl_gui_alv_grid,
+      g_grid1           TYPE REF TO cl_gui_alv_grid,
+      g_grid2           TYPE REF TO cl_gui_alv_grid,
+      gs_display        TYPE ty_display,
+      gs_display1       TYPE ty_display,
+      gs_display2       TYPE ty_display,
+      gs_layout         TYPE lvc_s_layo,
+      gs_selected_order TYPE ty_display.
+
+* Header and item tables for orders
+DATA: gt_orders      TYPE STANDARD TABLE OF zstparr_hdata,
+      gt_order_items TYPE STANDARD TABLE OF zstparr_rdata,
+      gt_fcat2       TYPE lvc_t_fcat,
+      gs_fcat2       TYPE lvc_s_fcat.
+
+* Event tracking structure
+DATA: ls_eve TYPE zparr_event.
+
+* Quotation and order ID variables
+DATA: oids TYPE zparr_order-order_id,
+      qid  TYPE zparr_order-quotation.
+
+* Workflow/Event-related variables
+DATA: lv_order_id TYPE sweinstcou-objkey,
+      lv_event    TYPE swetypecou-event.
+
+* Max customer ID tracker
+DATA lv_maxemp TYPE zde_custid.
+
+* Flag for checking customer status
+DATA: gv_csflag TYPE i.
+
+* Hierarchical ALV objects
+DATA: gr_alv       TYPE REF TO cl_salv_hierseq_table,
+      gr_container TYPE REF TO cl_gui_custom_container.
+
+* Miscellaneous fields for ALV and processing
+DATA: lvv_o   TYPE c LENGTH 10.
+DATA: ladodc  TYPE c LENGTH 10.
+DATA: ladodo  TYPE c LENGTH 10.
+DATA: oiads   TYPE c LENGTH 10.
+DATA: cids    TYPE c LENGTH 20.
+DATA: lvemail TYPE c LENGTH 12.
+DATA: lvquot  TYPE c LENGTH 10.
+
+* Cancellation message text
+DATA: lvcancel TYPE c LENGTH 70.  "Used to show cancellation message"
+
+DATA: l_oiw TYPE swo_typeid.
+
+DATA: lv_oid TYPE zparr_order-order_id. "Used for storing selected order_id"
+
+DATA: lv_quo TYPE zparr_order-quotation. "Used for storing selected quotation"
+DATA: lv_of TYPE i.
+
+DATA: lt_otc TYPE TABLE OF zparr_order,
+      ls_otc TYPE zparr_order.
+DATA: lv_stock TYPE zparr_material-stock.

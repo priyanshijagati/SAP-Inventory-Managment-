@@ -1,0 +1,751 @@
+*&---------------------------------------------------------------------*
+*&  Include           ZPARR_PROJECT_I01
+*&---------------------------------------------------------------------*
+
+*&---------------------------------------------------------------------*
+*&      Module  EXIT  INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE exit INPUT.
+
+  " Handle user commands triggered by function keys (OK codes)
+  IF ok_code = 'FC_BACK'.
+    " Navigate back to the initial screen
+    LEAVE TO SCREEN 0001.
+  ELSEIF ok_code = 'FC_EXIT'.
+    " Exit the program entirely
+    LEAVE PROGRAM.
+  ELSEIF ok_code = 'FC_CANCEL2'.
+    " Cancel operation and reset specific flags and structures, then go to screen 0002
+    CLEAR rflag.
+    CLEAR ls_cust1.
+    LEAVE TO SCREEN 0002.
+  ELSEIF ok_code = 'FC_CANCEL1'.
+    CLEAR: user,pass.
+    " Cancel and return to the initial screen
+    LEAVE TO SCREEN 0001.
+  ELSEIF ok_code = 'REGI'.
+    " Navigate to screen 0002 to perform a registration or similar action
+    CALL SCREEN 0002.
+  ENDIF.
+
+  " Handle hotspot clicks (e.g., on ALV grid fields) using the PICK command
+  DATA: lv_cur_field(20),        " Holds the name of the clicked field
+        lv_cur_val(18).          " Holds the value of the clicked field
+
+  IF sy-ucomm = 'PICK'.
+    " Get the field and value where the user clicked
+    GET CURSOR FIELD lv_cur_field VALUE lv_cur_val.
+
+    " Navigate to appropriate screens based on the clicked field
+    IF lv_cur_field = 'REG_TXT'.
+      CALL SCREEN '0002'.        " Open registration screen
+    ELSEIF lv_cur_field = 'FG_TXT'.
+      CLEAR: gs_cdata,ls_cust1.
+      CALL SCREEN '0101'.        " Possibly open a detailed info or follow-up screen
+    ENDIF.
+  ENDIF.
+
+ENDMODULE.
+
+*&---------------------------------------------------------------------*
+*&      Module  USER_COMMAND_0001  INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE user_command_0001 INPUT.
+  IF ok_code = 'LOG'.
+    PERFORM log_valid.
+  ENDIF.
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Module  USER_COMMAND_0002  INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE user_command_0002 INPUT.
+  IF ok_code = 'FC_REG1'.
+    PERFORM fc_reg1.
+*    gs_cdata-cust_id = ccid.
+*    gs_cdata-cust_name = ls_cust1-cust_name.
+*    gs_cdata-password = ls_cust1-password.
+*    gs_cdata-secu_que = ls_cust1-seq_que.
+*    gs_cdata-answer = ls_cust1-answer.
+*    gs_cdata-created_by = sy-uname.
+*    gs_cdata-created_on = sy-datum.
+*    gs_cdata-cust_sname = sy-uname.
+*    INSERT zparr_cust FROM gs_cdata.
+*    IF sy-subrc = 0.
+*      MESSAGE 'Success' TYPE 'S'.
+*    ENDIF.
+  ENDIF.
+
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Module  EXIT_COMMAND3  INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE exit_command3 INPUT.
+  IF ok_code = 'FC_BACK3'.
+    LEAVE TO SCREEN 0001.
+  ELSEIF ok_code = 'FC_EXIT3'.
+    LEAVE PROGRAM.
+*  ELSEIF ok_code = 'FC_CANCEL3'.
+*DATA: lt_rows TYPE lvc_t_row.
+*
+*" Empty the selection by passing an empty list
+*CALL METHOD grid->set_selected_rows
+*  EXPORTING
+*    it_index_rows = lt_rows.
+*skip.
+  ENDIF.
+
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Module  EXIT4  INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE exit4 INPUT.
+  IF ok_code = 'FC_BACK'.
+    LEAVE TO SCREEN 0001.
+  ELSEIF ok_code = 'FC_EXIT'.
+    LEAVE PROGRAM.
+  ELSEIF ok_code = 'FC_CANCEL4'.
+    LEAVE TO SCREEN 0004.
+  ENDIF.
+ENDMODULE.
+
+*ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Module  VALIDATE_PASS  INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE validate_pass INPUT.
+  PERFORM pass_re.
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Module  USER_COMMAND_0005  INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE user_command_0005 INPUT.
+  IF ok_code = 'FC_REG2'.
+    MESSAGE 'Success' TYPE 'S'.
+  ENDIF.
+ENDMODULE.
+
+*&---------------------------------------------------------------------*
+*&      Module  USER_COMMAND_0004  INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE user_command_0004 INPUT.
+  IF ok_code = 'FC_DISPLAY'.
+    CALL SCREEN '0004'.
+  ELSEIF ok_code = 'CHANGE'.
+    CALL SCREEN 0401 STARTING AT 10 5 ENDING AT 70 15.
+  ELSEIF ok_code = 'SEND'.
+    PERFORM quot.
+  ENDIF.
+*  DATA: gt_hdata TYPE TABLE OF zstparr_hdata.
+*DATA: gt_rdata TYPE TABLE OF zstparr_rdata.
+*
+*DATA: gt_fcat1 TYPE slis_t_fieldcat_alv,
+*      gs_fcat1 TYPE slis_fieldcat_alv.
+*
+*DATA: ls_keyinfo TYPE slis_keyinfo_alv.
+*
+*SELECT a~order_id b~cust_id b~cust_name a~status a~order_date  FROM zparr_order AS a INNER JOIN zparr_cust AS b ON a~cust_id = b~cust_id INTO CORRESPONDING FIELDS OF TABLE gt_hdata WHERE a~status = 'OPEN' AND a~cust_id = b~cust_id.
+*
+*SELECT a~order_id b~mid b~m_name a~quotation a~currency a~unit a~stock FROM zparr_order AS a INNER JOIN zparr_material AS b ON a~mid = b~mid INTO CORRESPONDING FIELDS OF TABLE gt_rdata WHERE a~status = 'OPEN' AND a~mid = b~mid.
+*
+*
+*gs_fcat1-col_pos = '1'.
+*gs_fcat1-fieldname = 'ORDER_ID'.
+*gs_fcat1-tabname = 'GT_HDATA'.
+*gs_fcat1-seltext_l = 'Order ID'.
+*APPEND gs_fcat1 TO gt_fcat1.
+*CLEAR gs_fcat1.
+*
+*gs_fcat1-col_pos = '2'.
+*gs_fcat1-fieldname = 'CUST_ID'.
+*gs_fcat1-tabname = 'GT_HDATA'.
+*gs_fcat1-seltext_l = 'CUSTOMER ID'.
+*APPEND gs_fcat1 TO gt_fcat1.
+*CLEAR gs_fcat1.
+*
+*gs_fcat1-col_pos = '3'.
+*gs_fcat1-fieldname = 'CUST_NAME'.
+*gs_fcat1-tabname = 'GT_HDATA'.
+*gs_fcat1-seltext_l = 'CUSTOMER NAME'.
+*APPEND gs_fcat1 TO gt_fcat1.
+*CLEAR gs_fcat1.
+*
+*gs_fcat1-col_pos = '5'.
+*gs_fcat1-fieldname = 'STATUS'.
+*gs_fcat1-tabname = 'GT_HDATA'.
+*gs_fcat1-seltext_l = 'STATUS'.
+*APPEND gs_fcat1 TO gt_fcat1.
+*CLEAR gs_fcat1.
+*
+*gs_fcat1-col_pos = '4'.
+*gs_fcat1-fieldname = 'ORDER_DATE'.
+*gs_fcat1-tabname = 'GT_HDATA'.
+*gs_fcat1-seltext_l = 'ORDER DATE'.
+*APPEND gs_fcat1 TO gt_fcat1.
+*CLEAR gs_fcat1.
+*
+*
+*gs_fcat1-col_pos = '1'.
+*gs_fcat1-fieldname = 'ORDER_ID'.
+*gs_fcat1-tabname = 'GT_RDATA'.
+*gs_fcat1-seltext_l = 'ORDER ID'.
+*APPEND gs_fcat1 TO gt_fcat1.
+*CLEAR gs_fcat1.
+*
+*gs_fcat1-col_pos = '2'.
+*gs_fcat1-fieldname = 'MID'.
+*gs_fcat1-tabname = 'GT_RDATA'.
+*gs_fcat1-seltext_l = 'MATERIAL ID'.
+*APPEND gs_fcat1 TO gt_fcat1.
+*CLEAR gs_fcat1.
+*
+*gs_fcat1-col_pos = '3'.
+*gs_fcat1-fieldname = 'M_NAME'.
+*gs_fcat1-tabname = 'GT_RDATA'.
+*gs_fcat1-seltext_l = 'MATERIAL NAME'.
+*APPEND gs_fcat1 TO gt_fcat1.
+*CLEAR gs_fcat1.
+*
+*gs_fcat1-col_pos = '4'.
+*gs_fcat1-fieldname = 'STOCK'.
+*gs_fcat1-tabname = 'GT_RDATA'.
+*gs_fcat1-seltext_l = 'QUANTITY'.
+*APPEND gs_fcat1 TO gt_fcat1.
+*CLEAR gs_fcat1.
+*
+*gs_fcat1-col_pos = '5'.
+*gs_fcat1-fieldname = 'UNIT'.
+*gs_fcat1-tabname = 'GT_RDATA'.
+*gs_fcat1-seltext_l = 'UNITS'.
+*APPEND gs_fcat1 TO gt_fcat1.
+*CLEAR gs_fcat1.
+*
+*gs_fcat1-col_pos = '6'.
+*gs_fcat1-fieldname = 'QUOTATION'.
+*gs_fcat1-tabname = 'GT_RDATA'.
+*gs_fcat1-seltext_l = 'QUOTATION'.
+*APPEND gs_fcat1 TO gt_fcat1.
+*CLEAR gs_fcat1.
+*
+*gs_fcat1-col_pos = '7'.
+*gs_fcat1-fieldname = 'CURRENCY'.
+*gs_fcat1-tabname = 'GT_RDATA'.
+*gs_fcat1-seltext_l = 'CURRENCY'.
+*APPEND gs_fcat1 TO gt_fcat1.
+*CLEAR gs_fcat1.
+*
+*
+*ls_keyinfo-header01 = 'ORDER_ID'.
+*ls_keyinfo-item01 = 'ORDER_ID'.
+*
+*CALL FUNCTION 'REUSE_ALV_HIERSEQ_LIST_DISPLAY'
+*  EXPORTING
+**   I_INTERFACE_CHECK              = ' '
+*   I_CALLBACK_PROGRAM             = SY-REPID
+**   I_CALLBACK_PF_STATUS_SET       = ' '
+**   I_CALLBACK_USER_COMMAND        = ' '
+**   IS_LAYOUT        =
+*    it_fieldcat      = gt_fcat1
+**   IT_EXCLUDING     =
+**   IT_SPECIAL_GROUPS              =
+**   IT_SORT          =
+**   IT_FILTER        =
+**   IS_SEL_HIDE      =
+**   I_SCREEN_START_COLUMN          = 0
+**   I_SCREEN_START_LINE            = 0
+**   I_SCREEN_END_COLUMN            = 0
+**   I_SCREEN_END_LINE              = 0
+**   I_DEFAULT        = 'X'
+**   I_SAVE           = ' '
+**   IS_VARIANT       =
+**   IT_EVENTS        =
+**   IT_EVENT_EXIT    =
+*    i_tabname_header = 'GT_HDATA'
+*    i_tabname_item   = 'GT_RDATA'
+**   I_STRUCTURE_NAME_HEADER        =
+**   I_STRUCTURE_NAME_ITEM          =
+*    is_keyinfo       = ls_keyinfo
+**   IS_PRINT         =
+**   IS_REPREP_ID     =
+**   I_BYPASSING_BUFFER             =
+**   I_BUFFER_ACTIVE  =
+**   IR_SALV_HIERSEQ_ADAPTER        =
+**   IT_EXCEPT_QINFO  =
+**   I_SUPPRESS_EMPTY_DATA          = ABAP_FALSE
+**     IMPORTING
+**   E_EXIT_CAUSED_BY_CALLER        =
+**   ES_EXIT_CAUSED_BY_USER         =
+*  TABLES
+*    t_outtab_header  = gt_hdata
+*    t_outtab_item    = gt_rdata
+**     EXCEPTIONS
+**   PROGRAM_ERROR    = 1
+**   OTHERS           = 2
+*  .
+*IF sy-subrc <> 0.
+** Implement suitable error handling here
+*ENDIF.
+ENDMODULE.
+
+*&SPWIZARD: INPUT MODULE FOR TS 'TS_ADMIN'. DO NOT CHANGE THIS LINE!
+*&SPWIZARD: GETS ACTIVE TAB
+
+*&SPWIZARD: INPUT MODULE FOR TS 'TC_ADMIN'. DO NOT CHANGE THIS LINE!
+*&SPWIZARD: GETS ACTIVE TAB
+MODULE tc_admin_active_tab_get INPUT.
+  ok_code = sy-ucomm.
+  CASE ok_code.
+    WHEN c_tc_admin-tab1.
+      g_tc_admin-pressed_tab = c_tc_admin-tab1.
+    WHEN c_tc_admin-tab2.
+      g_tc_admin-pressed_tab = c_tc_admin-tab2.
+    WHEN c_tc_admin-tab3.
+      g_tc_admin-pressed_tab = c_tc_admin-tab3.
+    WHEN OTHERS.
+*&SPWIZARD:      DO NOTHING
+  ENDCASE.
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Module  USER_COMMAND_0401  INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE user_command_0401 INPUT.
+  IF ok_code = 'CLDG'.
+    LEAVE TO SCREEN 0.
+  ELSEIF ok_code = 'SQ'.
+*    lvemail = cids.
+    lvquot = qid.
+    PERFORM sq.
+*    UPDATE zparr_order SET quotation = qid WHERE order_id = oids.
+*    IF sy-subrc = 0.
+*      MESSAGE'Updated Successfully' TYPE 'S'.
+*    ELSE.
+*      MESSAGE'Not Updated' TYPE 'E'.
+*    ENDIF.
+  ENDIF.
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Module  USER_COMMAND_0101  INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE user_command_0101 INPUT.
+  IF ok_code = 'FC_CP'.
+    PERFORM fc_cp.
+*    SELECT SINGLE * INTO gs_cdata FROM zparr_cust WHERE cust_id = gs_cdata-cust_id AND secu_que = ls_cust1-seq_que AND answer = gs_cdata-answer.
+*    IF sy-subrc = 0.
+*      gs_cdata-password = ls_cust1-password.
+*      UPDATE zparr_cust FROM gs_cdata.
+*      IF sy-subrc = 0.
+*        MESSAGE 'PASSWORD CHANGED SUCCESSFULLY' TYPE 'S'.
+*        CLEAR gs_cdata.
+*      ENDIF.
+*    ELSE.
+*      MESSAGE 'WRONG CREDENTIALS' TYPE 'E'.
+*    ENDIF.
+  ELSEIF ok_code = 'FC_CANCEL7'.
+    LEAVE TO SCREEN 0101.
+  ENDIF.
+
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Module  USER_COMMAND_0003  INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE user_command_0003 INPUT.
+
+  CALL METHOD grid->get_selected_rows
+    IMPORTING
+      et_index_rows = index_rows.
+
+  DATA: ls_ir LIKE LINE OF index_rows.
+
+
+  READ TABLE index_rows INDEX 1 INTO ls_ir.
+  DATA: ls_csdata TYPE zstparr_orders.
+  READ TABLE gt_data INDEX ls_ir-index INTO gs_data.
+  CLEAR ls_ir.
+  CLEAR index_rows.
+
+  DATA(lv_o) = gs_data-order_id.
+  ls_csdata = gs_data.
+  CLEAR gs_data.
+
+*  DATA: lv_order_id TYPE sweinstcou-objkey,
+*        lv_event    TYPE swetypecou-event.
+
+  SKIP.
+  IF ok_code = 'FC_CANCEL3'.
+    DATA: lt_rows TYPE lvc_t_row.
+
+    " Empty the selection by passing an empty list
+    CALL METHOD grid->set_selected_rows
+      EXPORTING
+        it_index_rows = lt_rows.
+    CLEAR lt_rows.
+    CALL METHOD grid->refresh_table_display
+      EXPORTING
+        is_stable      = VALUE lvc_s_stbl( row = 'X' col = 'X' )
+        i_soft_refresh = 'X'.
+*CALL SCREEN 0003.
+*LEAVE SCREEN.
+    CLEAR gs_data.
+  ENDIF.
+  IF ok_code = 'CREATE'.
+    lvcancel = lv_o.
+    l_oiw = lvcancel.
+    ls_eve-event = 1.
+    MESSAGE 'Inquiry Created' TYPE 'S'.
+    lv_event = 'WF_INQUIRY'.
+
+    CALL FUNCTION 'SWE_EVENT_CREATE'
+      EXPORTING
+        objtype              = 'ZPARRWF'
+        objkey               = l_oiw
+        event                = lv_event
+        start_recfb_synchron = 'X'
+      EXCEPTIONS
+        objtype_not_found    = 1
+        OTHERS               = 2.
+    .
+    SKIP.
+    IF sy-subrc = 0.
+      MESSAGE 'Inquiry Created' TYPE 'S'.
+    ENDIF.
+    CALL TRANSACTION 'VA11'.
+
+
+  ELSEIF ok_code = 'FOLLOW'.
+    IF lv_o IS INITIAL.
+      MESSAGE 'Please Select an Order' TYPE 'E'.
+    ENDIF.
+    lvcancel = lv_o.
+    MESSAGE 'Follow Up Sent' TYPE 'S'.
+    ls_eve-event = 2.
+    lv_event = 'WF_FOLLOW_UP'.
+    l_oiw = lvcancel.
+    CALL FUNCTION 'SWE_EVENT_CREATE'
+      EXPORTING
+        objtype              = 'ZPARRWF'
+        objkey               = l_oiw
+        event                = lv_event
+        start_recfb_synchron = 'X'
+      EXCEPTIONS
+        objtype_not_found    = 1
+        OTHERS               = 2.
+
+    .
+    SKIP.
+    IF sy-subrc = 0.
+      MESSAGE s006(zry_message).
+    ENDIF.
+
+
+  ELSEIF ok_code = 'CANCEL'.
+    IF lv_o IS INITIAL.
+      MESSAGE 'Please Select an Order' TYPE 'E'.
+    ENDIF.
+    lvcancel = lv_o.
+    UPDATE zparr_order SET status = 'CANCEL' WHERE order_id = lv_o.
+    MESSAGE 'Order Cancelled' TYPE 'S'.
+    ls_eve-event = 'WF_CANCEL'.
+    lv_event = 'WF_CANCEL'.
+    l_oiw = lvcancel.
+    CALL FUNCTION 'SWE_EVENT_CREATE'
+      EXPORTING
+        objtype              = 'ZPARRWF'
+        objkey               = l_oiw
+        event                = lv_event
+        start_recfb_synchron = 'X'
+      EXCEPTIONS
+        objtype_not_found    = 1
+        OTHERS               = 2.
+    .
+    IF sy-subrc = 0.
+      MESSAGE s004(zry_message).
+    ENDIF.
+
+
+  ELSEIF ok_code = 'ACCEPT'.
+    IF lv_o IS INITIAL.
+      MESSAGE 'Please Select an Order' TYPE 'E'.
+    ENDIF.
+    ls_eve-event = 4.
+    IF ls_csdata-quotation IS INITIAL.
+      MESSAGE 'Can not accept ,Quotation Still not Recieved' TYPE 'I'.
+    ELSE.
+      UPDATE zparr_order SET status = 'ACCEPT' WHERE order_id = lv_o.
+      MESSAGE 'Quotation Accepted Succefully' TYPE 'S'.
+*    PERFORM invoice.
+      IF sy-subrc = 0.
+        MESSAGE s005(zry_message).
+      ENDIF.
+    ENDIF.
+    l_oiw = lv_o.
+    PERFORM accept_mail.
+*    lv_event = 'WF_ACCEPT'.
+*
+*    CALL FUNCTION 'SWE_EVENT_CREATE'
+*      EXPORTING
+*        objtype              = 'ZPARRWF'
+*        objkey               = 'ORDE1234'
+*        event                = lv_event
+*        start_recfb_synchron = 'X'
+*      EXCEPTIONS
+*        objtype_not_found    = 1
+*        OTHERS               = 2.
+*    .
+*    SKIP.
+*    IF sy-subrc = 0.
+*      MESSAGE s001(zry_message).
+*    ENDIF.
+
+
+  ELSEIF ok_code = 'REJECT'.
+    IF lv_o IS INITIAL.
+      MESSAGE 'Please Select an Order' TYPE 'E'.
+    ENDIF.
+    MESSAGE 'Quotation Rejected' TYPE 'S'.
+    ls_eve-event = 5.
+    lv_event = 'WF_REJECT'.
+    l_oiw = lvcancel.
+    CALL FUNCTION 'SWE_EVENT_CREATE'
+      EXPORTING
+        objtype              = 'ZPARRWF'
+        objkey               = l_oiw
+        event                = lv_event
+        start_recfb_synchron = 'X'
+      EXCEPTIONS
+        objtype_not_found    = 1
+        OTHERS               = 2.
+    .
+    SKIP.
+    IF sy-subrc = 0.
+      MESSAGE s008(zry_message).
+    ENDIF.
+
+  ELSEIF ok_code = 'DES'.
+
+  ENDIF.
+
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Module  EXIT101  INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE exit101 INPUT.
+  IF ok_code = 'FC_BACK101'.
+    LEAVE TO SCREEN '0001'.
+  ELSEIF ok_code = 'FC_EXIT101'.
+    LEAVE PROGRAM.
+  ELSEIF ok_code = 'FC_CANCEL7'.
+    CLEAR: gs_cdata, ls_cust1.
+    LEAVE TO SCREEN '0101'.
+  ENDIF.
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Module  USER_COMMAND_0110  INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE user_command_0110 INPUT.
+  CALL METHOD g_grid->get_selected_rows
+    IMPORTING
+      et_index_rows = index_rows3.
+
+  DATA: ls_ir3 LIKE LINE OF index_rows3.
+
+  LOOP AT index_rows3 INTO ls_ir3.
+    READ TABLE gt_display INDEX ls_ir3-index INTO DATA(ls_data).
+*    IF ls_data-rowtype = 'ORDER'.
+    gs_selected_order = ls_data.
+    ladodo = ls_data-order_id.
+*    ENDIF.
+  ENDLOOP.
+
+*  READ TABLE gt_data INDEX ls_ir3-index INTO gs_data.
+  IF ok_code = 'SEND1'.
+    IF ladodo IS INITIAL.
+      MESSAGE 'Please Select an Order' TYPE 'E'.
+    ENDIF.
+    CLEAR: lv_quo, lv_of.
+    SELECT quotation FROM zparr_order INTO lv_quo WHERE order_id = ladodo.
+      IF lv_quo IS NOT INITIAL.
+        lv_of = 1.
+      ENDIF.
+    ENDSELECT.
+    IF lv_of = 0.
+      MESSAGE 'QUOTATION IS NOT ENTERED' TYPE 'E'.
+    ENDIF.
+    qid = lvquot.
+    lv_oid = ladodo.
+    PERFORM quot.
+    IF sy-subrc = 0.
+      MESSAGE 'Updated Quotation sent' TYPE 'S'.
+    ENDIF.
+  ELSEIF ok_code = 'CHANGE1' .
+    IF ladodo IS INITIAL.
+      MESSAGE 'SELECT AN ORDER' TYPE 'E'.
+    ENDIF.
+    CLEAR: lt_otc, ls_otc , lv_stock.
+    SELECT * FROM zparr_order INTO TABLE lt_otc WHERE order_id = ladodo.
+    LOOP AT lt_otc INTO ls_otc.
+      SELECT SINGLE stock FROM zparr_material INTO lv_stock WHERE mid = ls_otc-mid.
+      IF lv_stock < ls_otc-stock.
+        MESSAGE 'Not Enough Quantity of Materials in the Stock' TYPE 'E'.
+      ENDIF.
+    ENDLOOP.
+    oiads = ladodo.
+    CALL SCREEN 0401 STARTING AT 10 5 ENDING AT 70 15.
+  ELSEIF ok_code = 'COMP'.
+*    PERFORM invoice.
+*    DATA: lt_otc TYPE TABLE OF zparr_order,
+*          ls_otc TYPE zparr_order.
+*    DATA: lv_stock TYPE zparr_material-stock.
+    IF ladodo IS INITIAL.
+      MESSAGE 'Please Select an Order' TYPE 'E'.
+    ENDIF.
+    CLEAR: lt_otc, ls_otc , lv_stock.
+    SELECT * FROM zparr_order INTO TABLE lt_otc WHERE order_id = ladodo.
+    LOOP AT lt_otc INTO ls_otc.
+      SELECT SINGLE stock FROM zparr_material INTO lv_stock WHERE mid = ls_otc-mid.
+      IF lv_stock < ls_otc-stock.
+*        CLEAR: lt_otc, ls_otc , lv_stock.
+        MESSAGE 'Not Enough Quantity of Materials in the Stock' TYPE 'E'.
+      ENDIF.
+      ls_otc-stock = lv_stock - ls_otc-stock.
+      MODIFY lt_otc FROM ls_otc.
+      CLEAR ls_otc.
+    ENDLOOP.
+    PERFORM invoice.
+    UPDATE zparr_order SET status = 'COMPLETE' WHERE order_id = ladodo.
+    IF sy-subrc = 0.
+      MESSAGE 'Status changed to completed' TYPE 'S'.
+    ENDIF.
+  ENDIF.
+*      perform stockchange.
+
+  LOOP AT lt_otc INTO ls_otc.
+    UPDATE zparr_material SET stock = ls_otc-stock WHERE mid = ls_otc-mid.
+    CLEAR ls_otc.
+  ENDLOOP.
+*    UPDATE zparr_order SET status = 'COMPLETE' WHERE order_id = ladodo.
+*    IF sy-subrc = 0.
+*      MESSAGE 'Status changed to completed' TYPE 'S'.
+*    ENDIF.
+
+
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Module  USER_COMMAND_010  INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE user_command_010 INPUT.
+  CALL METHOD g_grid1->get_selected_rows
+    IMPORTING
+      et_index_rows = index_rows1.
+
+  DATA: ls_ir1 LIKE LINE OF index_rows1.
+
+  LOOP AT index_rows1 INTO ls_ir1.
+    READ TABLE gt_display1 INDEX ls_ir1-index INTO DATA(ls_data1).
+*    IF ls_data1-rowtype = 'ORDER'.
+    gs_selected_order = ls_data1.
+    ladodc = ls_data1-order_id.
+*    ENDIF.
+  ENDLOOP.
+  IF ok_code = 'SEND2'.
+    IF ladodc IS INITIAL.
+      MESSAGE 'Please Select an Order' TYPE 'E'.
+    ENDIF.
+    CLEAR: lv_quo, lv_of.
+    SELECT quotation FROM zparr_order INTO lv_quo WHERE order_id = ladodc.
+      IF lv_quo IS NOT INITIAL.
+        lv_of = 1.
+      ENDIF.
+    ENDSELECT.
+    IF lv_of = 0.
+      MESSAGE 'QUOTATION IS NOT ENTERED' TYPE 'E'.
+    ENDIF.
+    lv_oid = ladodc.
+    qid = lvquot.
+    PERFORM quot.
+    IF sy-subrc = 0.
+      MESSAGE 'Updated Quotation sent' TYPE 'S'.
+    ENDIF.
+  ELSEIF ok_code = 'CHANGE2'.
+    IF ladodc IS INITIAL.
+      MESSAGE 'SELECT AN ORDER' TYPE 'E'.
+    ENDIF.
+    CLEAR: lt_otc, ls_otc , lv_stock.
+    SELECT * FROM zparr_order INTO TABLE lt_otc WHERE order_id = ladodc.
+    LOOP AT lt_otc INTO ls_otc.
+      SELECT SINGLE stock FROM zparr_material INTO lv_stock WHERE mid = ls_otc-mid.
+      IF lv_stock < ls_otc-stock.
+        MESSAGE 'Not Enough Quantity of Materials in the Stock' TYPE 'E'.
+      ENDIF.
+    ENDLOOP.
+    oiads = ladodc.
+    CALL SCREEN 0401 STARTING AT 10 5 ENDING AT 70 15.
+  ELSEIF ok_code = 'DELC'.
+    DELETE FROM zparr_order WHERE order_id = ladodc.
+    IF sy-subrc = 0.
+      MESSAGE 'Record Deleted record' TYPE 'S'.
+    ELSE.
+      MESSAGE 'Record not deleted' TYPE 'S'.
+    ENDIF.
+  ENDIF.
+
+*  READ TABLE gt_data INDEX ls_ir1-index INTO gs_data.
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Module  USER_COMMAND_011  INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*MODULE user_command_011 INPUT.
+*  CALL METHOD g_grid2->get_selected_rows
+*    IMPORTING
+*      et_index_rows = index_rows2.
+*
+*  DATA: ls_ir2 LIKE LINE OF index_rows2.
+*
+*  LOOP AT index_rows2 INTO ls_ir2.
+*    READ TABLE gt_display2 INDEX ls_ir2-index INTO DATA(ls_data2).
+*    IF ls_data2-rowtype = 'ORDER'.
+*      gs_selected_order = ls_data2.
+*    ENDIF.
+*  ENDLOOP.
+*  SKIP.
+*
+**  READ TABLE gt_data INDEX ls_ir2-index INTO gs_data.
+*ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Module  EXIT_DB401  INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE exit_db401 INPUT.
+  IF ok_code = 'FC_DBBACK'.
+    LEAVE TO SCREEN 0 .
+  ENDIF.
+ENDMODULE.

@@ -1,0 +1,1170 @@
+*&---------------------------------------------------------------------*
+*&      Form  LOG_VALID
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+
+FORM log_valid .
+  IF user = auser AND pass = apass.                                "if user id and password equals admin credentials
+    CALL SCREEN 0004.
+
+  ELSEIF user <> auser OR pass <> apass.                           "if credentials not equals to admin id , password
+
+    SELECT SINGLE cust_name FROM zparr_cust INTO lv_custname       "perform customer login
+    WHERE cust_id = user.
+
+    SELECT SINGLE cust_id FROM zparr_cust INTO lv_custid
+  WHERE cust_id = user.
+
+
+    SELECT cust_id password FROM zparr_cust INTO CORRESPONDING FIELDS OF TABLE lt_cust
+          WHERE cust_id = user AND password = pass.   "if id is equals to customer id and pass equals cust pass
+    IF sy-subrc <> 0.
+      MESSAGE e000(zry_message).  "if select query fails , then passing the msg class
+    ELSE.
+      CALL SCREEN 0003.   "calling customer screen
+    ENDIF.
+  ELSE.
+    MESSAGE e000(zry_message).
+  ENDIF.
+ENDFORM.
+
+
+*&---------------------------------------------------------------------*
+*&      Form  REG_AUTO
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM reg_auto .
+*  DATA lv_maxemp TYPE zde_custid.
+  SELECT MAX( cust_id ) FROM zparr_cust INTO lv_maxemp.    "selecting max custid then auto incrementing it
+  IF sy-subrc IS NOT INITIAL.
+    CLEAR lv_no.
+    MESSAGE 'Error' TYPE 'E'.
+  ELSE.
+    SPLIT lv_maxemp AT 'T' INTO lv_pre lv_post.
+    " spliting CUSTID at T and storing CUST into lv_pre and rest of the number in post
+    lv_no = lv_post.
+    lv_no = lv_no + 1.    "incrementing by 1
+    lv_post = lv_no.
+  ENDIF.
+  CONCATENATE 'CUST' lv_post INTO ccid.  "concatenating CUST with incremented number
+  rflag = 1.
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  PASS_RE
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM pass_re .
+  IF ok_code = 'FC_REG1' OR ok_code = 'FC_CP'.
+    IF ls_cust1-password <> ls_cust1-re_pass.     "if pass is not equals to re enter password
+      MESSAGE 'NOT MATCHED' TYPE 'E'.
+    ENDIF.
+  ENDIF.
+ENDFORM.
+
+FORM field_catlog .
+  CLEAR gt_fcat.   " Clear the field catalog internal table before populating it
+
+  DEFINE add_field.
+    CLEAR gs_fcat.
+    gs_fcat-fieldname = &1.  " Assign field name to be displayed in the ALV
+    gs_fcat-coltext   = &2.   " Set the column header text
+    gs_fcat-outputlen = &3.     " Set the output length of the column
+    APPEND gs_fcat TO gt_fcat.
+  END-OF-DEFINITION.
+
+*  add_field 'SEL'          'Sel'        3.
+  add_field 'ORDER_ID'     'Order ID'   10.
+  add_field 'CUST_ID'      'Customer ID'   10.
+  add_field 'CUST_NAME'      'Customer Name'   10.
+  add_field 'ORDER_DATE'   'Order Date' 10.
+  add_field 'STATUS' 'Status'     15.
+  add_field 'MID'      'Material ID' 10.
+  add_field 'M_NAME'    'Material Name'       20.
+  add_field 'STOCK'    'Quantity'  10.
+  add_field 'UNIT'     'Unit'      10.
+  add_field 'QUOTATION'   'Quotation'      10.
+  add_field 'CURRENCY'   'Currency'      10.
+  add_field 'COLOR'        'Color'      0.
+
+
+
+  CLEAR gs_fcat.
+  gs_fcat-fieldname  = 'SEL'.
+  gs_fcat-coltext    = 'Sel'.
+  gs_fcat-checkbox   = 'X'.
+  gs_fcat-edit       = 'X'.
+  gs_fcat-outputlen  = 4.
+  APPEND gs_fcat TO gt_fcat.
+ENDFORM.
+
+FORM build_display_table .
+  CLEAR gt_display.    "Clear the final display internal table before populating it
+
+  LOOP AT gt_orders INTO DATA(order).
+    CLEAR gs_display.
+    gs_display-rowtype      = 'ORDER'.   " Mark the row as an 'ORDER' type
+
+    " Map order-level fields from gt_orders to the display structure
+
+    gs_display-order_id     = order-order_id.
+    gs_display-cust_id      = order-cust_id.
+    gs_display-cust_name      = order-cust_name.
+    gs_display-order_date   = order-order_date.
+    gs_display-status = order-status.
+*    gs_display-color = VALUE #( ( fname = 'ORDER_ID' color-col = '1' color-int = '1' color-inv = '0' ) ).
+    APPEND gs_display TO gt_display.
+
+
+    "loop through each item that belongs to the current order
+
+    LOOP AT gt_order_items INTO DATA(item)  WHERE order_id = order-order_id.
+      CLEAR gs_display.
+      gs_display-rowtype    = 'ITEM'.    " Mark the row as an 'ITEM' type
+
+      "Map item-level fields from gt_order_items to the structure
+      gs_display-order_id   = item-order_id.
+      gs_display-mid    = item-mid.
+      gs_display-m_name  = item-m_name.
+      gs_display-stock  = item-stock.
+      gs_display-unit   = item-unit.
+      gs_display-quotation = item-quotation.
+      gs_display-currency = item-currency.
+      APPEND gs_display TO gt_display.
+    ENDLOOP.
+  ENDLOOP.
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  FC_REG1
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM fc_reg1 .                                "registration of new customer
+  gs_cdata-cust_id = ccid.
+  gs_cdata-cust_name = ls_cust1-cust_name.
+  gs_cdata-password = ls_cust1-password.
+  gs_cdata-secu_que = ls_cust1-seq_que.
+  gs_cdata-answer = ls_cust1-answer.
+  gs_cdata-created_by = sy-uname.
+  gs_cdata-created_on = sy-datum.
+  gs_cdata-cust_sname = sy-uname.
+  INSERT zparr_cust FROM gs_cdata.
+  IF sy-subrc = 0.
+    MESSAGE 'Success' TYPE 'S'.
+  ELSE.
+    MESSAGE 'NOT REGISTERED' TYPE 'S'.
+  ENDIF.
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  CLDG
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM sq .
+  UPDATE zparr_order SET quotation = lvquot WHERE order_id = oiads.          "updating new quotated price in table
+  lvemail = cids.
+  IF sy-subrc = 0.
+    update zparr_order set status = 'OPEN' where order_id = oiads.
+    MESSAGE'Quotation Updated Successfully' TYPE 'S'.
+  ELSE.
+    MESSAGE'Quotation Not Updated' TYPE 'E'.
+  ENDIF.
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  FC_CP
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM fc_cp .
+  SELECT SINGLE * INTO gs_cdata FROM zparr_cust  "if user clicks on forgot password "
+     WHERE cust_id = gs_cdata-cust_id
+    AND secu_que = ls_cust1-seq_que AND answer = gs_cdata-answer.
+  IF sy-subrc = 0.
+    gs_cdata-password = ls_cust1-password.    "if password matches "
+    UPDATE zparr_cust FROM gs_cdata.
+    IF sy-subrc = 0.
+      MESSAGE 'PASSWORD CHANGED SUCCESSFULLY' TYPE 'S'.
+      CLEAR gs_cdata.
+    ENDIF.
+  ELSE.
+    MESSAGE 'WRONG CREDENTIALS' TYPE 'E'.
+  ENDIF.
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  ACCEPT_MAIL
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM accept_mail .
+  lv_event = 'WF_ACCEPT'.
+  lvv_o = lv_o.              "if order id is equals to passed order id
+  CALL FUNCTION 'SWE_EVENT_CREATE'  " Trigger a workflow event using the SAP standard function module
+    EXPORTING
+      objtype              = 'ZPARRWF'
+      objkey               = l_oiw
+      event                = lv_event     " event to trigger
+      start_recfb_synchron = 'X'
+    EXCEPTIONS
+      objtype_not_found    = 1
+      OTHERS               = 2.
+  .
+  SKIP.
+  IF sy-subrc = 0.
+    MESSAGE s001(zry_message).
+  ENDIF.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  INVOICE
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM invoice .   "form for invoice generation
+  DATA: lv_oid TYPE zparr_order-order_id.
+  lvv_o = ladodo.
+
+  DATA: lv_fname              TYPE rs38l_fnam,                "Function module name (used when calling smartforms)
+        lv_file               TYPE xstring,                   "Binary content of the generated PDF file
+        lt_lines              TYPE TABLE OF tline,            "Table to hold text lines (often used for Smart Form output)
+        lt_binary_tab         TYPE solix_tab,                 "Binary content in table form (used for email attachments)
+        lo_bcs                TYPE REF TO cl_bcs,             "Business Communication Services (BCS) main class for sending emails
+        lo_sapuser            TYPE REF TO cl_sapuser_bcs,     " Represents a SAP user to send email to (BCS recipient)
+        lt_text               TYPE soli_tab,                  "Email body text in table format
+        ls_text               TYPE soli,                      "Single line of email body text
+        lo_document           TYPE REF TO cl_document_bcs,    "Document object to hold the email content and attachments
+        lv_subject            TYPE so_obj_des,                "Subject line of the email
+        lv_result             TYPE os_boolean,                "Boolean result (used to check success/failure)
+        ls_control_parameters TYPE ssfctrlop,         "Control parameters for Smart Form execution
+        ls_job_output_info    TYPE ssfcrescl,          "Output info returned by Smart Form
+        ls_output_options     TYPE ssfcompop.          "Output options for Smart Form (e.g., print settings)
+
+
+
+
+  CALL FUNCTION 'SSF_FUNCTION_MODULE_NAME'
+    EXPORTING
+      formname           = 'ZPARR_FORM'    "Name of the Smart Form
+*     VARIANT            = ' '
+*     DIRECT_CALL        = ' '
+    IMPORTING
+      fm_name            = lv_fname    "Returns the name of the generated function module
+    EXCEPTIONS
+      no_form            = 1
+      no_function_module = 2
+      OTHERS             = 3.
+  IF sy-subrc <> 0.
+* Implement suitable error handling here
+  ENDIF.
+
+
+  ls_control_parameters-no_dialog = 'X'.      " Suppress the print dialog popup when calling the Smart Form
+  ls_control_parameters-preview = 'X'.        " Display a preview of the Smart Form output
+  ls_output_options-tddest = 'LOCL'.       "local printer
+  ls_control_parameters-getotf    = 'X'.   " Retrieve the OTF (Output Text Format) data instead of sending directly to printer
+
+
+  CALL FUNCTION lv_fname   " generates form output with provided paramenter
+    EXPORTING
+*     ARCHIVE_INDEX      =
+*     ARCHIVE_INDEX_TAB  =
+*     ARCHIVE_PARAMETERS =
+      control_parameters = ls_control_parameters    "Control settings for Smart Form execution
+*     MAIL_APPL_OBJ      =
+*     MAIL_RECIPIENT     =
+*     MAIL_SENDER        =
+      output_options     = ls_output_options
+      user_settings      = ' '
+      lv_oid             = lvv_o    "passing the order id
+    IMPORTING
+*     DOCUMENT_OUTPUT_INFO       =
+      job_output_info    = ls_job_output_info   "OTF "
+*     JOB_OUTPUT_OPTIONS =
+    EXCEPTIONS
+      formatting_error   = 1
+      internal_error     = 2
+      send_error         = 3
+      user_canceled      = 4
+      OTHERS             = 5.
+  IF sy-subrc <> 0.
+* Implement suitable error handling here
+  ENDIF.
+
+
+  IF ls_job_output_info-otfdata IS INITIAL.   "if data is not present
+    MESSAGE 'OTF DATA IS EMPTY' TYPE 'E'.
+  ENDIF.
+
+  CALL FUNCTION 'CONVERT_OTF'   " Convert the SmartForm output (in OTF format) to PDF format
+    EXPORTING
+      format                = 'PDF'     "format in which we want smartform
+*     MAX_LINEWIDTH         = 132
+*     ARCHIVE_INDEX         = ' '
+*     COPYNUMBER            = 0
+*     ASCII_BIDI_VIS2LOG    = ' '
+*     PDF_DELETE_OTFTAB     = ' '
+*     PDF_USERNAME          = ' '
+*     PDF_PREVIEW           = ' '
+*     USE_CASCADING         = ' '
+*     MODIFIED_PARAM_TABLE  =
+    IMPORTING
+*     BIN_FILESIZE          =
+      bin_file              = lv_file    " Output Binary content of the PDF (xstring format)
+    TABLES
+      otf                   = ls_job_output_info-otfdata   "Input: The OTF data generated by the Smart Form
+      lines                 = lt_lines    " Output: PDF content as table of text lines
+    EXCEPTIONS
+      err_max_linewidth     = 1
+      err_format            = 2
+      err_conv_not_possible = 3
+      err_bad_otf           = 4
+      OTHERS                = 5.
+  IF sy-subrc <> 0.
+* Implement suitable error handling here
+  ENDIF.
+
+  CALL FUNCTION 'SCMS_XSTRING_TO_BINARY'     "This is needed to prepare the PDF as an email attachment
+    EXPORTING
+      buffer     = lv_file            " The PDF content in xstring format (from CONVERT_OTF)
+*     APPEND_TO_TABLE       = ' '
+* IMPORTING
+*     OUTPUT_LENGTH         =
+    TABLES
+      binary_tab = lt_binary_tab.     " PDF content in binary table format (used for attachment)
+
+
+  " This is the starting point for building and sending an email in SAP
+  TRY.
+      CALL METHOD cl_bcs=>create_persistent
+        RECEIVING
+          result = lo_bcs.
+    CATCH cx_send_req_bcs .
+  ENDTRY.
+
+  TRY.
+      CALL METHOD cl_sapuser_bcs=>create
+        EXPORTING
+          i_user = 'KRISHAB'
+        RECEIVING
+          result = lo_sapuser.
+    CATCH cx_address_bcs .
+  ENDTRY.
+
+  TRY.
+      CALL METHOD lo_bcs->add_recipient
+        EXPORTING
+          i_recipient = lo_sapuser
+*         i_express   =
+*         i_copy      =
+*         i_blind_copy =
+*         i_no_forward =
+        .
+    CATCH cx_send_req_bcs .
+  ENDTRY.
+
+**TRY.
+*CALL METHOD cl_cam_address_bcs=>create_internet_address
+*  EXPORTING
+*    i_address_string =
+**    i_address_name   =
+**    i_incl_sapuser   =
+*  receiving
+*    result           =
+*    .
+** CATCH cx_address_bcs .
+**ENDTRY.
+*
+*ls_text-line = 'Order Details'.
+*APPEND ls_text TO lt_text.
+*CLEAR ls_text.
+
+  ls_text-line = 'Hello Recipient'.
+  APPEND ls_text TO lt_text.
+  CLEAR ls_text.
+
+  ls_text-line = 'Hope you’re well'.
+  APPEND ls_text TO lt_text.
+  CLEAR ls_text.
+
+  ls_text-line = 'Please see attached invoice for SmartSale'.
+  APPEND ls_text TO lt_text.
+  CLEAR ls_text.
+
+  ls_text-line = ' Don’t hesitate to reach out if you have any questions'.
+  APPEND ls_text TO lt_text.
+  CLEAR ls_text.
+
+  ls_text-line = 'Thanks and Regrads'.
+  APPEND ls_text TO lt_text.
+  CLEAR ls_text.
+
+
+
+  TRY.
+      CALL METHOD cl_document_bcs=>create_document
+        EXPORTING
+          i_type    = 'RAW'
+          i_subject = 'SmartSales Invoice Details'    " Subject of the email document
+*         i_length  =
+*         i_language     = SPACE
+*         i_importance   =
+*         i_sensitivity  =
+          i_text    = lt_text             "body content of the email
+*         i_hex     =
+*         i_header  =
+*         i_sender  =
+*         iv_vsi_profile =
+        RECEIVING
+          result    = lo_document.     "document object is created and returned for use in the email
+    CATCH cx_document_bcs .
+  ENDTRY.
+
+
+  IF lt_text IS INITIAL.
+    MESSAGE 'Text is empty' TYPE 'E'.
+
+  ENDIF.
+
+  CONCATENATE 'Order Number' ':' lvv_o INTO lv_subject.      "order number is attached as a title for pdf
+
+  TRY.
+      CALL METHOD lo_document->add_attachment
+        EXPORTING
+          i_attachment_type    = 'PDF'                 "format in which attachment will be downloaded
+          i_attachment_subject = lv_subject                "Subject of the attachment
+          i_att_content_hex    = lt_binary_tab.
+    CATCH cx_document_bcs .
+  ENDTRY.
+
+  TRY.
+      CALL METHOD lo_bcs->set_document
+        EXPORTING
+          i_document = lo_document.         "document containing the email body and attachment
+    CATCH cx_send_req_bcs .
+  ENDTRY.
+
+
+  TRY.
+      CALL METHOD lo_bcs->set_send_immediately        "Set the flag to send the email immediately
+        EXPORTING
+          i_send_immediately = 'X'.
+    CATCH cx_send_req_bcs .
+  ENDTRY.
+
+  TRY.
+      CALL METHOD lo_bcs->send            "Trigger the actual sending of the email
+*  EXPORTING
+*    i_with_error_screen = SPACE
+        RECEIVING
+          result = lv_result.      "Result will be 'X' if sending was successful
+    CATCH cx_send_req_bcs .
+  ENDTRY.
+
+  IF lv_result IS NOT INITIAL.
+
+    MESSAGE 'Mail sent successfully' TYPE 'I'.
+
+    COMMIT WORK.
+
+  ENDIF.
+ENDFORM.
+
+FORM cust_alv.
+  IF gv_csflag = 0.
+    CREATE OBJECT container1    " Create a custom container named 'CUSTOM1' on the screen
+      EXPORTING
+        container_name = 'CUSTOM1'.
+
+    CREATE OBJECT grid        " Create an ALV grid object within the custom container
+      EXPORTING
+        i_parent = container1.
+
+    CALL FUNCTION 'LVC_FIELDCATALOG_MERGE'      "build the field catalog based on structure ZSTPARR_ORDERS
+      EXPORTING
+        i_structure_name       = 'ZSTPARR_ORDERS'
+      CHANGING
+        ct_fieldcat            = gt_fcat
+      EXCEPTIONS
+        inconsistent_interface = 1
+        program_error          = 2
+        OTHERS                 = 3.
+    IF sy-subrc <> 0.
+* Implement suitable error handling here
+    ENDIF.
+
+    " Customize column labels and appearance in the field catalog
+    READ TABLE gt_fcat INTO gs_fcat WITH KEY fieldname = 'STOCK'.
+    gs_fcat-scrtext_l = 'Quantity'.
+    gs_fcat-scrtext_m = 'Quantity'.
+    gs_fcat-scrtext_s = 'Quantity'.
+    MODIFY gt_fcat FROM gs_fcat INDEX sy-tabix.
+    CLEAR gs_fcat.
+
+    READ TABLE gt_fcat INTO gs_fcat WITH KEY fieldname = 'UNIT'.
+    gs_fcat-scrtext_l = 'Unit'.
+    gs_fcat-scrtext_m = 'Unit'.
+    gs_fcat-scrtext_s = 'Unit'.
+    MODIFY gt_fcat FROM gs_fcat INDEX sy-tabix.
+    CLEAR gs_fcat.
+
+    READ TABLE gt_fcat INTO gs_fcat WITH KEY fieldname = 'CURRENCY'.
+    gs_fcat-scrtext_l = 'Curr'.
+    gs_fcat-scrtext_m = 'Currency'.
+    gs_fcat-scrtext_s = 'Currency'.
+    MODIFY gt_fcat FROM gs_fcat INDEX sy-tabix.
+    CLEAR gs_fcat.
+
+    READ TABLE gt_fcat INTO gs_fcat WITH KEY fieldname = 'M_NAME'.
+    gs_fcat-emphasize = 'C311'.
+    gs_fcat-scrtext_l = 'Material Name'.
+    gs_fcat-scrtext_m = 'Material Name'.
+    gs_fcat-scrtext_s = 'Material Name'.
+    MODIFY gt_fcat FROM gs_fcat INDEX sy-tabix.
+    CLEAR gs_fcat.
+
+    READ TABLE gt_fcat INTO gs_fcat WITH KEY fieldname = 'ORDER_ID'.
+    gs_fcat-emphasize = 'C511'.
+    gs_fcat-scrtext_l = 'Order ID'.
+    gs_fcat-scrtext_m = 'Order ID'.
+    gs_fcat-scrtext_s = 'Order ID'.
+    MODIFY gt_fcat FROM gs_fcat INDEX sy-tabix.
+    CLEAR gs_fcat.
+
+    READ TABLE gt_fcat INTO gs_fcat WITH KEY fieldname = 'ORDER_DATE'.
+    gs_fcat-scrtext_l = 'Order Date'.
+    gs_fcat-scrtext_m = 'Order Date'.
+    gs_fcat-scrtext_s = 'Order Date'.
+    MODIFY gt_fcat FROM gs_fcat INDEX sy-tabix.
+    CLEAR gs_fcat.
+
+    READ TABLE gt_fcat INTO gs_fcat WITH KEY fieldname = 'QUOTATION'.
+    gs_fcat-scrtext_l = 'Quotation'.
+    gs_fcat-scrtext_m = 'Quotation'.
+    gs_fcat-scrtext_s = 'Quotation'.
+    MODIFY gt_fcat FROM gs_fcat INDEX sy-tabix.
+    CLEAR gs_fcat.
+
+
+    " Fetch order records with status 'OPEN' for a specific customer
+    SELECT * INTO CORRESPONDING FIELDS OF TABLE gt_data FROM zparr_order WHERE cust_id = lv_custid AND status = 'OPEN'.
+
+    LOOP AT gt_data ASSIGNING FIELD-SYMBOL(<fs_data>).
+      SELECT SINGLE m_name INTO <fs_data>-m_name FROM zparr_material WHERE mid = <fs_data>-mid.
+    ENDLOOP.
+
+
+    gs_sort-spos = 1.
+    gs_sort-fieldname = 'ORDER_ID'.
+    APPEND gs_sort TO gt_sort.
+    CLEAR gs_sort.
+*gs_variant-report = sy-repid.
+    DATA x_save TYPE c VALUE 'X'.
+    CALL METHOD grid->set_table_for_first_display       " Display ALV Grid with data, field catalog, and sorting
+      EXPORTING
+        i_structure_name              = 'ZSTPARR_ORDERS'
+*       is_variant                    = gs_variant
+*       i_save                        = x_save
+      CHANGING
+        it_outtab                     = gt_data
+        it_fieldcatalog               = gt_fcat
+        it_sort                       = gt_sort
+*       it_filter                     =
+      EXCEPTIONS
+        invalid_parameter_combination = 1
+        program_error                 = 2
+        too_many_lines                = 3
+        OTHERS                        = 4.
+    gv_csflag = 1.
+  ENDIF.
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  QUOT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM quot .               "form for sending quotation
+*  DATA: lv_oid TYPE zparr_order-order_id.
+*  lv_oid = ladodc.              "local variable for storing order id
+
+  DATA: lv_fname              TYPE rs38l_fnam,                "Function module name (used when calling smartforms)
+        lv_file               TYPE xstring,                   "Binary content of the generated PDF file
+        lt_lines              TYPE TABLE OF tline,            "Table to hold text lines (often used for Smart Form output)
+        lt_binary_tab         TYPE solix_tab,                 "Binary content in table form (used for email attachments)
+        lo_bcs                TYPE REF TO cl_bcs,             "Business Communication Services (BCS) main class for sending emails
+        lo_sapuser            TYPE REF TO cl_sapuser_bcs,     " Represents a SAP user to send email to (BCS recipient)
+        lt_text               TYPE soli_tab,                  "Email body text in table format
+        ls_text               TYPE soli,                      "Single line of email body text
+        lo_document           TYPE REF TO cl_document_bcs,    "Document object to hold the email content and attachments
+        lv_subject            TYPE so_obj_des,                "Subject line of the email
+        lv_result             TYPE os_boolean,                "Boolean result (used to check success/failure)
+        ls_control_parameters TYPE ssfctrlop,         "Control parameters for Smart Form execution
+        ls_job_output_info    TYPE ssfcrescl,          "Output info returned by Smart Form
+        ls_output_options     TYPE ssfcompop.          "Output options for Smart Form (e.g., print settings)
+
+
+
+
+  CALL FUNCTION 'SSF_FUNCTION_MODULE_NAME'
+    EXPORTING
+      formname           = 'ZPARR_QUO'         "Name of the Smart Form
+*     VARIANT            = ' '
+*     DIRECT_CALL        = ' '
+    IMPORTING
+      fm_name            = lv_fname         "Returns the name of the generated function module
+    EXCEPTIONS
+      no_form            = 1
+      no_function_module = 2
+      OTHERS             = 3.
+  IF sy-subrc <> 0.
+* Implement suitable error handling here
+  ENDIF.
+
+
+  ls_control_parameters-no_dialog = 'X'.      " Suppress the print dialog popup when calling the Smart Form
+  ls_control_parameters-preview = 'X'.        " Display a preview of the Smart Form output
+  ls_output_options-tddest = 'LOCL'.       "local printer
+  ls_control_parameters-getotf    = 'X'.   " Retrieve the OTF (Output Text Format) data instead of sending directly to printer
+
+  SKIP.
+  CALL FUNCTION lv_fname           " generates form output with provided paramenter
+    EXPORTING
+*     ARCHIVE_INDEX      =
+*     ARCHIVE_INDEX_TAB  =
+*     ARCHIVE_PARAMETERS =
+      control_parameters = ls_control_parameters       "Control settings for Smart Form execution
+*     MAIL_APPL_OBJ      =
+*     MAIL_RECIPIENT     =
+*     MAIL_SENDER        =
+      output_options     = ls_output_options      "Control settings for Smart Form execution
+      user_settings      = ' '
+      lv_oid             = lv_oid           "passing the order id
+    IMPORTING
+*     DOCUMENT_OUTPUT_INFO       =
+      job_output_info    = ls_job_output_info
+*     JOB_OUTPUT_OPTIONS =
+    EXCEPTIONS
+      formatting_error   = 1
+      internal_error     = 2
+      send_error         = 3
+      user_canceled      = 4
+      OTHERS             = 5.
+  IF sy-subrc <> 0.
+* Implement suitable error handling here
+  ENDIF.
+
+
+  IF ls_job_output_info-otfdata IS INITIAL.
+    MESSAGE 'OTF DATA IS EMPTY' TYPE 'E'.
+  ENDIF.
+
+  CALL FUNCTION 'CONVERT_OTF'                " Convert the SmartForm output (in OTF format) to PDF format
+    EXPORTING
+      format                = 'PDF'
+*     MAX_LINEWIDTH         = 132
+*     ARCHIVE_INDEX         = ' '
+*     COPYNUMBER            = 0
+*     ASCII_BIDI_VIS2LOG    = ' '
+*     PDF_DELETE_OTFTAB     = ' '
+*     PDF_USERNAME          = ' '
+*     PDF_PREVIEW           = ' '
+*     USE_CASCADING         = ' '
+*     MODIFIED_PARAM_TABLE  =
+    IMPORTING
+*     BIN_FILESIZE          =
+      bin_file              = lv_file      " Output Binary content of the PDF (xstring format)
+    TABLES
+      otf                   = ls_job_output_info-otfdata
+      lines                 = lt_lines
+    EXCEPTIONS
+      err_max_linewidth     = 1
+      err_format            = 2
+      err_conv_not_possible = 3
+      err_bad_otf           = 4
+      OTHERS                = 5.
+  IF sy-subrc <> 0.
+* Implement suitable error handling here
+  ENDIF.
+
+  CALL FUNCTION 'SCMS_XSTRING_TO_BINARY'         "This is needed to prepare the PDF as an email attachment
+    EXPORTING
+      buffer     = lv_file             " The PDF content in xstring format (from CONVERT_OTF)
+*     APPEND_TO_TABLE       = ' '
+* IMPORTING
+*     OUTPUT_LENGTH         =
+    TABLES
+      binary_tab = lt_binary_tab.     " PDF content in binary table format (used for attachment)
+
+
+  TRY.
+      CALL METHOD cl_bcs=>create_persistent     " This is the starting point for building and sending an email in SAP
+        RECEIVING
+          result = lo_bcs.        "will hold the email object used for adding recipients , doc
+    CATCH cx_send_req_bcs .
+  ENDTRY.
+
+  TRY.
+      CALL METHOD cl_sapuser_bcs=>create     " is used to specify the recipient of the email
+        EXPORTING
+          i_user = lvemail
+        RECEIVING
+          result = lo_sapuser.     "hold the SAP user object
+    CATCH cx_address_bcs .
+  ENDTRY.
+
+  TRY.
+      CALL METHOD lo_bcs->add_recipient      "Add a recipient to the email objec
+        EXPORTING
+          i_recipient = lo_sapuser
+*         i_express   =
+*         i_copy      =
+*         i_blind_copy =
+*         i_no_forward =
+        .
+    CATCH cx_send_req_bcs .
+  ENDTRY.
+
+**TRY.
+*CALL METHOD cl_cam_address_bcs=>create_internet_address
+*  EXPORTING
+*    i_address_string =
+**    i_address_name   =
+**    i_incl_sapuser   =
+*  receiving
+*    result           =
+*    .
+** CATCH cx_address_bcs .
+**ENDTRY.
+*
+*ls_text-line = 'Order Details'.
+*APPEND ls_text TO lt_text.
+*CLEAR ls_text.
+
+  ls_text-line = 'Hello Recipient'.
+  APPEND ls_text TO lt_text.
+  CLEAR ls_text.
+
+  ls_text-line = 'Hope you’re well'.
+  APPEND ls_text TO lt_text.
+  CLEAR ls_text.
+
+  ls_text-line = 'Please see attached Quotation for SmartSale'.
+  APPEND ls_text TO lt_text.
+  CLEAR ls_text.
+
+  ls_text-line = ' Please let us know if everything looks good or if you need any further details.'.
+  APPEND ls_text TO lt_text.
+  CLEAR ls_text.
+
+  ls_text-line = 'Thanks and Regrads'.
+  APPEND ls_text TO lt_text.
+  CLEAR ls_text.
+
+  ls_text-line = 'SmartSales'.
+  APPEND ls_text TO lt_text.
+  CLEAR ls_text.
+
+  TRY.
+      CALL METHOD cl_document_bcs=>create_document
+        EXPORTING
+          i_type    = 'RAW'
+          i_subject = 'SmartSales Quotation Details'   " Subject of the email document
+*         i_length  =
+*         i_language     = SPACE
+*         i_importance   =
+*         i_sensitivity  =
+          i_text    = lt_text      "body content of the email
+*         i_hex     =
+*         i_header  =
+*         i_sender  =
+*         iv_vsi_profile =
+        RECEIVING
+          result    = lo_document.     "document object is created and returned for use in the email
+    CATCH cx_document_bcs .
+  ENDTRY.
+
+
+  IF lt_text IS INITIAL.
+    MESSAGE 'Text is empty' TYPE 'E'.
+
+  ENDIF.
+
+  CONCATENATE 'Order ID' ':' lv_oid INTO lv_subject.     "order number is attached as a title for pdf
+
+  TRY.
+      CALL METHOD lo_document->add_attachment
+        EXPORTING
+          i_attachment_type    = 'PDF'    "format in which attachment will be downloaded
+          i_attachment_subject = lv_subject
+          i_att_content_hex    = lt_binary_tab.
+    CATCH cx_document_bcs .
+  ENDTRY.
+
+  TRY.
+      CALL METHOD lo_bcs->set_document
+        EXPORTING
+          i_document = lo_document.
+    CATCH cx_send_req_bcs .
+  ENDTRY.
+
+
+  TRY.
+      CALL METHOD lo_bcs->set_send_immediately
+        EXPORTING
+          i_send_immediately = 'X'.
+    CATCH cx_send_req_bcs .
+  ENDTRY.
+
+  TRY.
+      CALL METHOD lo_bcs->send
+*  EXPORTING
+*    i_with_error_screen = SPACE
+        RECEIVING
+          result = lv_result.     "Result will be 'X' if sending was successful
+    CATCH cx_send_req_bcs .
+  ENDTRY.
+
+  IF lv_result IS NOT INITIAL.     "if lv_result is X means not initial"
+
+    MESSAGE 'Mail send successfully' TYPE 'I'.
+
+    COMMIT WORK.
+
+  ENDIF.
+*  DATA: lv_mid TYPE zparr_material-mid.
+*  lv_mid = LADODO.
+*
+*  DATA: lv_fname              TYPE rs38l_fnam,
+*        lv_file               TYPE xstring,
+*        lt_lines              TYPE TABLE OF tline,
+*        lt_binary_tab         TYPE solix_tab,
+*        lo_bcs                TYPE REF TO cl_bcs,
+*        lo_sapuser            TYPE REF TO cl_sapuser_bcs,
+*        lt_text               TYPE soli_tab,
+*        ls_text               TYPE soli,
+*        lo_document           TYPE REF TO cl_document_bcs,
+*        lv_subject            TYPE so_obj_des,
+*        lv_result             TYPE os_boolean,
+*        ls_control_parameters TYPE ssfctrlop,
+*        ls_job_output_info    TYPE ssfcrescl,
+*        ls_output_options     TYPE ssfcompop.
+*
+*
+*
+*  CALL FUNCTION 'SSF_FUNCTION_MODULE_NAME'
+*    EXPORTING
+*      formname           = 'ZPARR_QUO'
+**     VARIANT            = ' '
+**     DIRECT_CALL        = ' '
+*    IMPORTING
+*      fm_name            = lv_fname
+*    EXCEPTIONS
+*      no_form            = 1
+*      no_function_module = 2
+*      OTHERS             = 3.
+*  IF sy-subrc <> 0.
+** Implement suitable error handling here
+*  ENDIF.
+*
+*  ls_control_parameters-no_dialog = 'X'.
+*  ls_control_parameters-preview = 'X'.
+*  ls_output_options-tddest = 'LOCL'.
+*  ls_control_parameters-getotf    = 'X'.
+*
+*  CALL FUNCTION lv_fname
+*    EXPORTING
+**     ARCHIVE_INDEX      =
+**     ARCHIVE_INDEX_TAB  =
+**     ARCHIVE_PARAMETERS =
+*      control_parameters = ls_control_parameters
+**     MAIL_APPL_OBJ      =
+**     MAIL_RECIPIENT     =
+**     MAIL_SENDER        =
+*      output_options     = ls_output_options
+*      user_settings      = ' '
+*      lv_mid             = lv_mid
+*    IMPORTING
+**     DOCUMENT_OUTPUT_INFO       =
+*      job_output_info    = ls_job_output_info
+**     JOB_OUTPUT_OPTIONS =
+*    EXCEPTIONS
+*      formatting_error   = 1
+*      internal_error     = 2
+*      send_error         = 3
+*      user_canceled      = 4
+*      OTHERS             = 5.
+*  IF sy-subrc <> 0.
+** Implement suitable error handling here
+*  ENDIF.
+*
+*
+*  IF ls_job_output_info-otfdata IS INITIAL.
+*    MESSAGE 'OTF DATA IS EMPTY' TYPE 'E'.
+*  ENDIF.
+*
+*  CALL FUNCTION 'CONVERT_OTF'
+*    EXPORTING
+*      format                = 'PDF'
+**     MAX_LINEWIDTH         = 132
+**     ARCHIVE_INDEX         = ' '
+**     COPYNUMBER            = 0
+**     ASCII_BIDI_VIS2LOG    = ' '
+**     PDF_DELETE_OTFTAB     = ' '
+**     PDF_USERNAME          = ' '
+**     PDF_PREVIEW           = ' '
+**     USE_CASCADING         = ' '
+**     MODIFIED_PARAM_TABLE  =
+*    IMPORTING
+**     BIN_FILESIZE          =
+*      bin_file              = lv_file
+*    TABLES
+*      otf                   = ls_job_output_info-otfdata
+*      lines                 = lt_lines
+*    EXCEPTIONS
+*      err_max_linewidth     = 1
+*      err_format            = 2
+*      err_conv_not_possible = 3
+*      err_bad_otf           = 4
+*      OTHERS                = 5.
+*  IF sy-subrc <> 0.
+** Implement suitable error handling here
+*  ENDIF.
+*
+*  CALL FUNCTION 'SCMS_XSTRING_TO_BINARY'
+*    EXPORTING
+*      buffer     = lv_file
+**     APPEND_TO_TABLE       = ' '
+** IMPORTING
+**     OUTPUT_LENGTH         =
+*    TABLES
+*      binary_tab = lt_binary_tab.
+*
+*
+*  TRY.
+*      CALL METHOD cl_bcs=>create_persistent
+*        RECEIVING
+*          result = lo_bcs.
+*    CATCH cx_send_req_bcs .
+*  ENDTRY.
+*
+*  TRY.
+*      CALL METHOD cl_sapuser_bcs=>create
+*        EXPORTING
+*          i_user = lvemail
+*        RECEIVING
+*          result = lo_sapuser.
+*    CATCH cx_address_bcs .
+*  ENDTRY.
+*
+*  TRY.
+*      CALL METHOD lo_bcs->add_recipient
+*        EXPORTING
+*          i_recipient = lo_sapuser
+**         i_express   =
+**         i_copy      =
+**         i_blind_copy =
+**         i_no_forward =
+*        .
+*    CATCH cx_send_req_bcs .
+*  ENDTRY.
+*
+***TRY.
+**CALL METHOD cl_cam_address_bcs=>create_internet_address
+**  EXPORTING
+**    i_address_string =
+***    i_address_name   =
+***    i_incl_sapuser   =
+**  receiving
+**    result           =
+**    .
+*** CATCH cx_address_bcs .
+***ENDTRY.
+**
+**ls_text-line = 'Order Details'.
+**APPEND ls_text TO lt_text.
+**CLEAR ls_text.
+*
+*  ls_text-line = 'Hello Recipient'.
+*  APPEND ls_text TO lt_text.
+*  CLEAR ls_text.
+*
+*  ls_text-line = 'Hope you’re well'.
+*  APPEND ls_text TO lt_text.
+*  CLEAR ls_text.
+*
+*  ls_text-line = 'Please see attached quotation  for SmartSale'.
+*  APPEND ls_text TO lt_text.
+*  CLEAR ls_text.
+*
+*  ls_text-line = ' Don’t hesitate to reach out if you have any questions'.
+*  APPEND ls_text TO lt_text.
+*  CLEAR ls_text.
+*
+*  ls_text-line = 'Thanks and Regrads'.
+*  APPEND ls_text TO lt_text.
+*  CLEAR ls_text.
+*
+*  TRY.
+*      CALL METHOD cl_document_bcs=>create_document
+*        EXPORTING
+*          i_type    = 'RAW'
+*          i_subject = 'SmartSales Quotation Details'
+**         i_length  =
+**         i_language     = SPACE
+**         i_importance   =
+**         i_sensitivity  =
+*          i_text    = lt_text
+**         i_hex     =
+**         i_header  =
+**         i_sender  =
+**         iv_vsi_profile =
+*        RECEIVING
+*          result    = lo_document.
+*    CATCH cx_document_bcs .
+*  ENDTRY.
+*
+*
+*  IF lt_text IS INITIAL.
+*    MESSAGE 'Text is empty' TYPE 'E'.
+*
+*  ENDIF.
+*
+*  CONCATENATE 'Material ID' ':' lv_mid INTO lv_subject.
+*
+*  TRY.
+*      CALL METHOD lo_document->add_attachment
+*        EXPORTING
+*          i_attachment_type    = 'PDF'
+*          i_attachment_subject = lv_subject
+*          i_att_content_hex    = lt_binary_tab.
+*    CATCH cx_document_bcs .
+*  ENDTRY.
+*
+*  TRY.
+*      CALL METHOD lo_bcs->set_document
+*        EXPORTING
+*          i_document = lo_document.
+*    CATCH cx_send_req_bcs .
+*  ENDTRY.
+*
+*
+*  TRY.
+*      CALL METHOD lo_bcs->set_send_immediately
+*        EXPORTING
+*          i_send_immediately = 'X'.
+*    CATCH cx_send_req_bcs .
+*  ENDTRY.
+*
+*  TRY.
+*      CALL METHOD lo_bcs->send
+**  EXPORTING
+**    i_with_error_screen = SPACE
+*        RECEIVING
+*          result = lv_result.
+*    CATCH cx_send_req_bcs .
+*  ENDTRY.
+*
+*  IF lv_result IS NOT INITIAL.
+*
+*    MESSAGE 'Mail send successfully' TYPE 'I'.
+*
+*    COMMIT WORK.
+*  ENDIF.
+ENDFORM.
+
+
+FORM build_display_table1 .           " Admin screen , ALV tables "
+  CLEAR gt_display1.
+
+  LOOP AT gt_orders INTO DATA(order).
+    CLEAR gs_display1.
+    gs_display1-rowtype      = 'ORDER'.
+    gs_display1-order_id     = order-order_id.
+    gs_display1-cust_id      = order-cust_id.
+    gs_display1-cust_name      = order-cust_name.
+    gs_display1-order_date   = order-order_date.
+    gs_display1-status = order-status.
+*    gs_display-color = VALUE #( ( fname = 'ORDER_ID' color-col = '1' color-int = '1' color-inv = '0' ) ).
+    APPEND gs_display1 TO gt_display1.
+
+    LOOP AT gt_order_items INTO DATA(item)  WHERE order_id = order-order_id.
+      CLEAR gs_display1.
+      gs_display1-rowtype    = 'ITEM'.
+      gs_display1-order_id   = item-order_id.
+      gs_display1-mid    = item-mid.
+      gs_display1-m_name  = item-m_name.
+      gs_display1-stock  = item-stock.
+      gs_display1-unit   = item-unit.
+      gs_display1-quotation = item-quotation.
+      gs_display1-currency = item-currency.
+      APPEND gs_display1 TO gt_display1.
+    ENDLOOP.
+  ENDLOOP.
+ENDFORM.
+
+FORM build_display_table2 .                 " Admin screen , ALV tables "
+  CLEAR gt_display2.
+
+  LOOP AT gt_orders INTO DATA(order).
+    CLEAR gs_display2.
+    gs_display2-rowtype      = 'ORDER'.
+    gs_display2-order_id     = order-order_id.
+    gs_display2-cust_id      = order-cust_id.
+    gs_display2-cust_name      = order-cust_name.
+    gs_display2-order_date   = order-order_date.
+    gs_display2-status = order-status.
+*    gs_display-color = VALUE #( ( fname = 'ORDER_ID' color-col = '1' color-int = '1' color-inv = '0' ) ).
+    APPEND gs_display2 TO gt_display2.
+
+    LOOP AT gt_order_items INTO DATA(item)  WHERE order_id = order-order_id.
+      CLEAR gs_display2.
+      gs_display2-rowtype    = 'ITEM'.
+      gs_display2-order_id   = item-order_id.
+      gs_display2-mid    = item-mid.
+      gs_display2-m_name  = item-m_name.
+      gs_display2-stock  = item-stock.
+      gs_display2-unit   = item-unit.
+      gs_display2-quotation = item-quotation.
+      gs_display2-currency = item-currency.
+      APPEND gs_display2 TO gt_display2.
+    ENDLOOP.
+  ENDLOOP.
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  STOCKCHANGE
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM stockchange .
+
+ENDFORM.

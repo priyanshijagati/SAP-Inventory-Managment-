@@ -1,0 +1,225 @@
+REPORT zparr_ord_bdc
+       NO STANDARD PAGE HEADING LINE-SIZE 255.
+TYPES: BEGIN OF lty_ord,
+         order_id   TYPE zparr_order-order_id,
+         mid        TYPE zparr_order-mid,
+         cust_id    TYPE zparr_order-cust_id,
+         order_date TYPE zparr_order-order_date,
+         stock      TYPE zparr_order-stock,
+         unit       TYPE zparr_order-unit,
+         status     TYPE zparr_order-status,
+         quotation  TYPE zparr_order-quotation,
+         currency   TYPE zparr_order-currency,
+       END OF lty_ord.
+
+DATA: lt_data TYPE TABLE OF lty_ord,
+      ls_data TYPE lty_ord.
+
+DATA: lv_file TYPE string.
+DATA: lt_bdcdata TYPE TABLE OF bdcdata.
+DATA: ls_bdcdata TYPE bdcdata.
+DATA: lt_message TYPE TABLE OF bdcmsgcoll.
+DATA: ls_message TYPE  bdcmsgcoll.
+DATA: lv_mess TYPE string.
+DATA: lv_line TYPE string.
+DATA: lt_raw TYPE STANDARD TABLE OF string.
+
+PARAMETERS: p_file TYPE localfile.
+
+DATA: lt_split TYPE STANDARD TABLE OF string.
+
+
+AT SELECTION-SCREEN ON VALUE-REQUEST FOR p_file.
+
+  CALL FUNCTION 'F4_FILENAME'
+    EXPORTING
+      program_name  = syst-cprog
+      dynpro_number = syst-dynnr
+      field_name    = ' '
+    IMPORTING
+      file_name     = p_file.
+
+START-OF-SELECTION.
+
+  lv_file = p_file.
+
+  CALL FUNCTION 'GUI_UPLOAD'
+    EXPORTING
+      filename = lv_file
+*     filetype = 'ASC'
+*     has_field_separator = 'X'   "FIELD SEPARATOR - TAB
+    TABLES
+      data_tab = lt_raw.
+  IF sy-subrc <> 0.
+    MESSAGE e004(zry_message).
+  ENDIF.
+
+
+  LOOP AT lt_raw INTO lv_line.
+    CLEAR lt_split.
+    SPLIT lv_line AT cl_abap_char_utilities=>horizontal_tab INTO TABLE lt_split.
+
+*    CLEAR ls_data.
+    READ TABLE lt_split INDEX 1 INTO ls_data-order_id.
+    READ TABLE lt_split INDEX 2 INTO ls_data-mid.
+    READ TABLE lt_split INDEX 3 INTO ls_data-cust_id.
+    READ TABLE lt_split INDEX 4 INTO ls_data-order_date.
+    READ TABLE lt_split INDEX 5 INTO ls_data-stock.
+    READ TABLE lt_split INDEX 6 INTO ls_data-unit.
+    READ TABLE lt_split INDEX 7 INTO ls_data-status.
+    READ TABLE lt_split INDEX 8 INTO ls_data-quotation.
+    READ TABLE lt_split INDEX 9 INTO ls_data-currency.
+
+    APPEND ls_data TO lt_data.
+  ENDLOOP.
+
+  DATA: lv_quo   TYPE char12,
+        lv_stock TYPE char9.
+  LOOP AT lt_data INTO ls_data.
+    CLEAR: lt_bdcdata, lt_message.
+
+    WRITE ls_data-quotation TO lv_quo RIGHT-JUSTIFIED DECIMALS 2.
+    WRITE ls_data-stock TO lv_stock.
+
+
+    PERFORM bdc_dynpro      USING 'SAPMSVMA' '0100'.
+    PERFORM bdc_field       USING 'BDC_CURSOR'
+                                  'VIEWNAME'.
+    PERFORM bdc_field       USING 'BDC_OKCODE'
+                                  '=UPD'.
+*    PERFORM bdc_field       USING 'VIEWNAME'
+*                                  record-viewname_001.
+*    PERFORM bdc_field       USING 'VIMDYNFLDS-LTD_DTA_NO'
+*                                  record-ltd_dta_no_002.
+    PERFORM bdc_dynpro      USING 'SAPLZ_PROJ' '0002'.
+    PERFORM bdc_field       USING 'BDC_CURSOR'
+                                  'ZPARR_ORDER-CUST_ID(01)'.
+    PERFORM bdc_field       USING 'BDC_OKCODE'
+                                  '=NEWL'.
+    PERFORM bdc_dynpro      USING 'SAPLZ_PROJ' '0002'.
+    PERFORM bdc_field       USING 'BDC_CURSOR'
+                                  'ZPARR_ORDER-CURRENCY(01)'.
+    PERFORM bdc_field       USING 'BDC_OKCODE'
+                                  '=SAVE'.
+    PERFORM bdc_field       USING 'ZPARR_ORDER-ORDER_ID(01)'
+                                  ls_data-order_id.
+    PERFORM bdc_field       USING 'ZPARR_ORDER-MID(01)'
+                                  ls_data-mid.
+    PERFORM bdc_field       USING 'ZPARR_ORDER-CUST_ID(01)'
+                                  ls_data-cust_id.
+    PERFORM bdc_field       USING 'ZPARR_ORDER-ORDER_DATE(01)'
+                                  ls_data-order_date.
+    PERFORM bdc_field       USING 'ZPARR_ORDER-STOCK(01)'
+                                  lv_stock.
+    PERFORM bdc_field       USING 'ZPARR_ORDER-UNIT(01)'
+                                  ls_data-unit.
+    PERFORM bdc_field       USING 'ZPARR_ORDER-STATUS(01)'
+                                  ls_data-status.
+    PERFORM bdc_field       USING 'ZPARR_ORDER-QUOTATION(01)'
+                                  lv_quo.
+    PERFORM bdc_field       USING 'ZPARR_ORDER-CURRENCY(01)'
+                                 ls_data-currency.
+    PERFORM bdc_dynpro      USING 'SAPLZ_PROJ' '0002'.
+    PERFORM bdc_field       USING 'BDC_OKCODE'
+                                  '/EABR'.
+    PERFORM bdc_field       USING 'BDC_CURSOR'
+                                  'ZPARR_ORDER-CUST_ID(01)'.
+    PERFORM bdc_dynpro      USING 'SAPLSPO1' '0100'.
+    PERFORM bdc_field       USING 'BDC_OKCODE'
+                                  '=NO'.
+    PERFORM bdc_dynpro      USING 'SAPLZ_PROJ' '0002'.
+*    PERFORM bdc_field       USING 'ZPARR_ORDER-ORDER_DATE(01)'
+*                                  record-order_date_01_012.
+*    PERFORM bdc_field       USING 'ZPARR_ORDER-STOCK(01)'
+*                                  record-stock_01_013.
+*    PERFORM bdc_field       USING 'ZPARR_ORDER-UNIT(01)'
+*                                  record-unit_01_014.
+*    PERFORM bdc_field       USING 'ZPARR_ORDER-STATUS(01)'
+*                                  record-status_01_015.
+*    PERFORM bdc_field       USING 'ZPARR_ORDER-QUOTATION(01)'
+*                                  record-quotation_01_016.
+*    PERFORM bdc_field       USING 'ZPARR_ORDER-CURRENCY(01)'
+*                                  record-currency_01_017.
+    PERFORM bdc_dynpro      USING 'SAPLZ_PROJ' '0002'.
+    PERFORM bdc_field       USING 'BDC_OKCODE'
+                                  '/EABR'.
+    PERFORM bdc_field       USING 'BDC_CURSOR'
+                                  'ZPARR_ORDER-CUST_ID(01)'.
+    PERFORM bdc_dynpro      USING 'SAPLSPO1' '0100'.
+    PERFORM bdc_field       USING 'BDC_OKCODE'
+                                  '=YES'.
+    PERFORM bdc_dynpro      USING 'SAPLZ_PROJ' '0002'.
+    PERFORM bdc_field       USING 'BDC_CURSOR'
+                                  'ZPARR_ORDER-CURRENCY(01)'.
+    PERFORM bdc_field       USING 'BDC_OKCODE'
+                                  '=SAVE'.
+*    PERFORM bdc_field       USING 'ZPARR_ORDER-ORDER_ID(01)'
+*                                  record-order_id_01_018.
+*    PERFORM bdc_field       USING 'ZPARR_ORDER-MID(01)'
+*                                  record-mid_01_019.
+*    PERFORM bdc_field       USING 'ZPARR_ORDER-CUST_ID(01)'
+*                                  record-cust_id_01_020.
+*    PERFORM bdc_field       USING 'ZPARR_ORDER-ORDER_DATE(01)'
+*                                  record-order_date_01_021.
+*    PERFORM bdc_field       USING 'ZPARR_ORDER-STOCK(01)'
+*                                  record-stock_01_022.
+*    PERFORM bdc_field       USING 'ZPARR_ORDER-UNIT(01)'
+*                                  record-unit_01_023.
+*    PERFORM bdc_field       USING 'ZPARR_ORDER-STATUS(01)'
+*                                  record-status_01_024.
+*    PERFORM bdc_field       USING 'ZPARR_ORDER-QUOTATION(01)'
+*                                  record-quotation_01_025.
+*    PERFORM bdc_field       USING 'ZPARR_ORDER-CURRENCY(01)'
+*                                  record-currency_01_026.
+    PERFORM bdc_dynpro      USING 'SAPLZ_PROJ' '0002'.
+    PERFORM bdc_field       USING 'BDC_CURSOR'
+                                  'ZPARR_ORDER-ORDER_ID(02)'.
+    PERFORM bdc_field       USING 'BDC_OKCODE'
+                                  '=BACK'.
+    PERFORM bdc_dynpro      USING 'SAPLZ_PROJ' '0002'.
+    PERFORM bdc_field       USING 'BDC_CURSOR'
+                                  'ZPARR_ORDER-ORDER_ID(02)'.
+    PERFORM bdc_field       USING 'BDC_OKCODE'
+                                  '=BACK'.
+    PERFORM bdc_dynpro      USING 'SAPMSVMA' '0100'.
+    PERFORM bdc_field       USING 'BDC_OKCODE'
+                                  '/EBACK'.
+    PERFORM bdc_field       USING 'BDC_CURSOR'
+                                  'VIEWNAME'.
+*    PERFORM bdc_transaction USING 'SM30'.
+    CALL TRANSACTION 'SM30' USING lt_bdcdata MODE 'E' UPDATE 'A'
+          MESSAGES INTO lt_message.
+
+  ENDLOOP.
+  LOOP AT lt_message INTO ls_message.
+    CALL FUNCTION 'MESSAGE_TEXT_BUILD'
+      EXPORTING
+        msgid               = ls_message-msgid
+        msgnr               = ls_message-msgnr
+        msgv1               = ls_message-msgv1
+        msgv2               = ls_message-msgv2
+        msgv3               = ls_message-msgv3
+        msgv4               = ls_message-msgv4
+      IMPORTING
+        message_text_output = lv_mess.
+
+    WRITE: / lv_mess.
+  ENDLOOP.
+
+*---------------------------------------------------------------------*
+* BDC helper routines
+*---------------------------------------------------------------------*
+FORM bdc_dynpro USING program dynpro.
+  CLEAR ls_bdcdata.
+  ls_bdcdata-program  = program.
+  ls_bdcdata-dynpro   = dynpro.
+  ls_bdcdata-dynbegin = 'X'.
+  APPEND ls_bdcdata TO lt_bdcdata.
+ENDFORM.
+
+FORM bdc_field USING fnam fval.
+  CLEAR ls_bdcdata.
+  ls_bdcdata-fnam = fnam.
+  ls_bdcdata-fval = fval.
+  APPEND ls_bdcdata TO lt_bdcdata.
+ENDFORM.

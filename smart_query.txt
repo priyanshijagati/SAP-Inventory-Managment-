@@ -1,0 +1,137 @@
+
+
+                           invoice form
+
+
+
+
+select * from zparr_order into CORRESPONDING FIELDS OF
+  table lt_order where order_id = lv_oid.
+  
+  
+  
+  
+  
+  
+ select mid from zparr_order
+  into CORRESPONDING FIELDS OF TABLE lt_id where
+  order_id = lv_oid.
+
+
+loop at lt_id into ls_id.
+
+select mid  m_name  description
+   from zparr_material APPENDING CORRESPONDING FIELDS OF
+   TABLE lt_mat where mid = ls_id-mid .
+  endloop.
+
+  LOOP AT lt_mat ASSIGNING FIELD-SYMBOL(<fs_mat>).
+    SELECT single quotation stock unit currency
+      into CORRESPONDING FIELDS OF <fs_mat>
+      from zparr_order
+      where order_id = lv_oid and mid = <fs_mat>-mid.
+
+
+  ENDLOOP.
+
+
+
+
+
+select mid from zparr_order
+  into CORRESPONDING FIELDS OF TABLE lt_id where
+  order_id = lv_oid.
+
+
+loop at lt_id into ls_id.
+
+select mid  m_name  description
+   from zparr_material APPENDING CORRESPONDING FIELDS OF
+   TABLE lt_mat where mid = ls_id-mid .
+  endloop.
+
+  LOOP AT lt_mat ASSIGNING FIELD-SYMBOL(<fs_mat>).
+    SELECT single quotation stock unit currency
+      into CORRESPONDING FIELDS OF <fs_mat>
+      from zparr_order
+      where order_id = lv_oid and mid = <fs_mat>-mid.
+
+
+  ENDLOOP.
+
+                                 
+								 
+								 
+								 quotation form 
+								 
+								 
+select * from zparr_order into CORRESPONDING FIELDS OF
+  table lt_order where order_id = lv_oid.
+
+
+*
+*SELECT SINGLE DESCRIPTION FROM ZPARR_MATERIAL
+*   INTO LV_DES WHERE MID = LV_MID.
+*
+**
+*SELECT SINGLE PRICE FROM ZPARR_MATERIAL
+*   INTO LV_PRICE WHERE MID = LV_MID.
+*
+*SELECT * FROM ZPARR_ORDER
+*  INTO CORRESPONDING FIELDS OF TABLE
+*  LT_ORDER WHERE MID = LV_MID.
+*
+
+
+
+select mid from zparr_order
+  into CORRESPONDING FIELDS OF TABLE lt_id where
+  order_id = lv_oid.
+
+
+loop at lt_id into ls_id.
+
+select mid  m_name  description
+   from zparr_material APPENDING CORRESPONDING FIELDS OF
+   TABLE lt_mat where mid = ls_id-mid .
+  endloop.
+
+  LOOP AT lt_mat ASSIGNING FIELD-SYMBOL(<fs_mat>).
+    SELECT single quotation stock unit currency
+      into CORRESPONDING FIELDS OF <fs_mat>
+      from zparr_order
+      where order_id = lv_oid and mid = <fs_mat>-mid.
+
+
+  ENDLOOP.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
